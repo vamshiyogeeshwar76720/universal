@@ -1,34 +1,311 @@
+//old code pull based - sender to receiver  (receive payment not fucntioning . to work this seperate page fo teh sender is needeed)
+
+// import { AppConfig } from "./config.js";
+// import { contractABI } from "./abi.js";
+
+// let provider, signer;
+
+// // Elements
+// const connectBtn = document.getElementById("connectWalletBtn");
+// const disconnectBtn = document.getElementById("disconnectWalletBtn");
+// const accountDisplay = document.getElementById("account");
+// const networkDisplay = document.getElementById("network");
+
+// const blockchainSelect = document.getElementById("blockchainSelect");
+// const tokenSelect = document.getElementById("tokenSelect");
+// const intervalSelect = document.getElementById("intervalSelect");
+// const customIntervalInput = document.getElementById("customInterval");
+
+// // --- WALLET CONNECTION LOGIC ---
+// async function connectWallet() {
+//   if (!window.ethereum) return alert("Install MetaMask");
+//   provider = new ethers.providers.Web3Provider(window.ethereum);
+//   await provider.send("eth_requestAccounts", []);
+//   signer = provider.getSigner();
+
+//   const address = await signer.getAddress();
+//   const network = await provider.getNetwork();
+
+//   accountDisplay.innerText = "Wallet: " + address;
+//   networkDisplay.innerText = `Network: ${network.name} (chainId: ${network.chainId})`;
+
+//   connectBtn.style.display = "none";
+//   disconnectBtn.style.display = "inline-block";
+
+//   sessionStorage.setItem("walletAddress", address);
+//   sessionStorage.setItem("walletNetwork", network.name);
+// }
+
+// async function disconnectWallet() {
+//   signer = null;
+//   provider = null;
+//   accountDisplay.innerText = "";
+//   networkDisplay.innerText = "";
+//   connectBtn.style.display = "inline-block";
+//   disconnectBtn.style.display = "none";
+
+//   sessionStorage.removeItem("walletAddress");
+//   sessionStorage.removeItem("walletNetwork");
+// }
+
+// async function restoreWallet() {
+//   const storedAddress = sessionStorage.getItem("walletAddress");
+//   const storedNetwork = sessionStorage.getItem("walletNetwork");
+//   if (storedAddress && window.ethereum) {
+//     provider = new ethers.providers.Web3Provider(window.ethereum);
+//     signer = provider.getSigner();
+//     accountDisplay.innerText = "Wallet: " + storedAddress;
+//     networkDisplay.innerText = "Network: " + storedNetwork;
+//     connectBtn.style.display = "none";
+//     disconnectBtn.style.display = "inline-block";
+//   }
+// }
+
+// connectBtn.onclick = connectWallet;
+// disconnectBtn.onclick = disconnectWallet;
+// restoreWallet();
+
+// // --- DROPDOWN LOGIC ---
+// Object.keys(AppConfig.CHAINS).forEach((key) => {
+//   const opt = document.createElement("option");
+//   opt.value = key;
+//   opt.text = AppConfig.CHAINS[key].name;
+//   blockchainSelect.appendChild(opt);
+// });
+
+// function populateTokens() {
+//   const chainKey = blockchainSelect.value;
+//   tokenSelect.innerHTML = "";
+//   const tokens = AppConfig.getTokens(chainKey);
+//   for (const tokenName in tokens) {
+//     const opt = document.createElement("option");
+//     opt.value = tokens[tokenName];
+//     opt.text = tokenName;
+//     tokenSelect.appendChild(opt);
+//   }
+// }
+
+// const tokenAddressDisplay = document.getElementById("tokenAddressDisplay");
+// function updateTokenAddressDisplay() {
+//   tokenAddressDisplay.value = tokenSelect.value || "";
+// }
+
+// populateTokens();
+// updateTokenAddressDisplay();
+// blockchainSelect.addEventListener("change", () => {
+//   populateTokens();
+//   updateTokenAddressDisplay();
+// });
+// tokenSelect.addEventListener("change", updateTokenAddressDisplay);
+
+// intervalSelect.addEventListener("change", () => {
+//   customIntervalInput.style.display =
+//     intervalSelect.value === "custom" ? "inline-block" : "none";
+// });
+
+// // --- CREATE EMI PLAN (Receiver creates plan, sender must activate it) ---
+// document.getElementById("createPlanBtn").onclick = async () => {
+//   if (!signer) return alert("Connect wallet first");
+
+//   try {
+//     const receiverAddress = await signer.getAddress();
+//     const emiAmountInput = document.getElementById("emiAmount").value.trim();
+//     const totalAmountInput = document
+//       .getElementById("totalAmount")
+//       .value.trim();
+//     const blockchain = blockchainSelect.value;
+//     const tokenAddress = tokenSelect.value;
+//     const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex].text;
+
+//     if (!tokenAddress || !ethers.utils.isAddress(tokenAddress))
+//       return alert("Select valid token");
+
+//     if (!emiAmountInput || isNaN(emiAmountInput) || Number(emiAmountInput) <= 0)
+//       return alert("Invalid EMI amount");
+//     if (
+//       !totalAmountInput ||
+//       isNaN(totalAmountInput) ||
+//       Number(totalAmountInput) < Number(emiAmountInput)
+//     )
+//       return alert("Total amount must be >= EMI amount");
+
+//     let interval =
+//       intervalSelect.value === "custom"
+//         ? Number(customIntervalInput.value.trim()) * 60
+//         : Number(intervalSelect.value);
+//     if (interval < 60) return alert("Interval must be >= 1 min (60 seconds)");
+
+//     const decimals = AppConfig.TOKEN_DECIMALS[tokenSymbol];
+//     if (decimals === undefined) return alert("Token decimals not configured");
+
+//     const emiAmount = ethers.utils.parseUnits(emiAmountInput, decimals);
+//     const totalAmount = ethers.utils.parseUnits(totalAmountInput, decimals);
+
+//     let contractAddress = AppConfig.getEmiContract(blockchain);
+//     const contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+//     // Create EMI Plan - receiver creates it for themselves
+//     const tx = await contract.createEmiPlan(
+//       receiverAddress, // receiver is the connected wallet
+//       tokenAddress,
+//       emiAmount,
+//       interval,
+//       totalAmount,
+//       { gasLimit: 200000 }
+//     );
+
+//     console.log("Transaction sent:", tx.hash);
+//     const receipt = await tx.wait();
+//     console.log("Transaction confirmed:", receipt);
+
+//     // Get Plan ID from emitted event
+//     const event = receipt.events.find((e) => e.event === "EmiPlanCreated");
+//     if (!event) {
+//       return alert(
+//         "EmiPlanCreated event not found. Check ABI or contract deployment."
+//       );
+//     }
+//     const planId = event.args.planId;
+
+//     // Generate shareable link or information for sender
+//     const planDetails = `
+// EMI Plan Created Successfully!
+
+// Plan ID: ${planId.toString()}
+// Contract Address: ${contractAddress}
+// Receiver: ${receiverAddress}
+// Token: ${tokenSymbol} (${tokenAddress})
+// EMI Amount: ${emiAmountInput} ${tokenSymbol}
+// Total Amount: ${totalAmountInput} ${tokenSymbol}
+// Payment Interval: ${interval / 60} minutes
+
+// IMPORTANT FOR SENDER:
+// 1. Optional: Send down payment directly to receiver (normal transfer)
+// 2. Approve token to EMI contract
+// 3. Call activatePlan(planId)
+// Once activated:
+// - EMI auto-pay starts
+// - No further action needed
+
+// Status: Waiting for sender activation...
+//     `.trim();
+
+//     alert(planDetails);
+
+//     // Listen for PlanActivated event
+//     setupPlanEventListeners(
+//       contract,
+//       planId,
+//       contractAddress,
+//       tokenSymbol,
+//       decimals
+//     );
+//   } catch (err) {
+//     console.error("Error creating EMI plan:", err);
+//     const msg =
+//       err?.reason || err?.data?.message || err?.message || "Unknown error";
+//     alert("Error creating plan: " + msg);
+//   }
+// };
+
+// // --- SETUP EVENT LISTENERS FOR PLAN ---
+// function setupPlanEventListeners(
+//   contract,
+//   planId,
+//   contractAddress,
+//   tokenSymbol,
+//   decimals
+// ) {
+//   console.log(`Setting up listeners for Plan ID: ${planId.toString()}`);
+
+//   // Listen for PlanActivated event
+//   contract.on("PlanActivated", (planId, sender) => {
+//     if (planId.eq(planId)) {
+//       console.log(`Plan ${planId.toString()} activated by ${sender}`);
+//       alert(
+//         `✅ Plan Activated!\n\nPlan ID: ${planId.toString()}\nSender: ${sender}\n\nAuto-debit has started. Payments will be made automatically at the scheduled intervals.`
+//       );
+//     }
+//   });
+
+//   // Listen for EmiPaid event
+//   contract.on("EmiPaid", (planId, receiver, amount) => {
+//     if (pid.eq(planId)) {
+//       const formattedAmount = ethers.utils.formatUnits(amount, decimals);
+//       console.log(
+//         `EMI Payment received for Plan ${planId.toString()}: ${formattedAmount} ${tokenSymbol}`
+//       );
+//       alert(
+//         `💰 EMI Payment Received!\n\nPlan ID: ${planId.toString()}\nAmount: ${formattedAmount} ${tokenSymbol}\nReceiver: ${receiver}`
+//       );
+//     }
+//   });
+
+//   // Listen for EmiCompleted event
+//   contract.on("EmiCompleted", (planId) => {
+//     if (planId.eq(planId)) {
+//       console.log(`Plan ${planId.toString()} completed!`);
+//       alert(
+//         `🎉 EMI Plan Completed!\n\nPlan ID: ${planId.toString()}\n\nAll payments have been received. The plan is now inactive.`
+//       );
+//     }
+//   });
+
+//   // Listen for ReceiverModified event
+//   contract.on("ReceiverModified", (pid, oldR, newR) => {
+//     if (!pid.eq(planId)) return;
+
+//     alert(
+//       `🔁 Receiver Updated!\n\nOld Receiver:\n${oldR}\n\nNew Receiver:\n${newR}`
+//     );
+//   });
+
+//   console.log("Event listeners set up successfully");
+// }
+
+// // --- CHECK PLAN STATUS (Optional utility function) ---
+// async function checkPlanStatus(planId) {
+//   if (!provider) return alert("Connect wallet first");
+
+//   try {
+//     const blockchain = blockchainSelect.value;
+//     const contractAddress = AppConfig.getEmiContract(blockchain);
+//     const contract = new ethers.Contract(
+//       contractAddress,
+//       contractABI,
+//       provider
+//     );
+
+//     const plan = await contract.plans(planId);
+
+//     const status = `
+// Plan ID: ${planId}
+// Sender: ${plan.sender}
+// Receiver: ${plan.receiver}
+// Token: ${plan.token}
+// EMI Amount: ${plan.emiAmount.toString()}
+// Total Amount: ${plan.totalAmount.toString()}
+// Amount Paid: ${plan.amountPaid.toString()}
+// Interval: ${plan.interval.toString()} seconds
+// Next Payment: ${new Date(
+//       plan.nextPaymentTime.toNumber() * 1000
+//     ).toLocaleString()}
+// Active: ${plan.isActive ? "Yes" : "No"}
+//     `.trim();
+
+//     alert(status);
+//   } catch (err) {
+//     console.error("Error checking plan status:", err);
+//     alert("Error: " + (err?.message || "Unknown error"));
+//   }
+// }
+// // Make checkPlanStatus available globally for debugging/testing
+// window.checkPlanStatus = checkPlanStatus;
 
 import { AppConfig } from "./config.js";
 import { contractABI } from "./abi.js";
+
 import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm";
-
-/* =========================================================
-   SAFE DOM HELPERS (CRITICAL FIX)
-========================================================= */
-function $(id) {
-  return document.getElementById(id);
-}
-
-function safeSetValue(id, value) {
-  const el = $(id);
-  if (el) el.value = value;
-}
-
-function safeSetText(id, text) {
-  const el = $(id);
-  if (el) el.innerText = text;
-}
-
-function safeShow(id) {
-  const el = $(id);
-  if (el) el.style.display = "block";
-}
-
-function safeOnClick(id, handler) {
-  const el = $(id);
-  if (el) el.onclick = handler;
-}
 
 /* =========================================================
    GLOBAL STATE
@@ -38,39 +315,22 @@ let signer;
 let receiverAddress;
 let currentChainId;
 
-let originalMetaMaskLink = null;
-let originalTrustWalletLink = null;
-let originalUniversalLink = null;
-
 /* =========================================================
-   UI ELEMENTS (SAFE ACCESS)
+   UI ELEMENTS
 ========================================================= */
-const connectBtn = $("connectWalletBtn");
-const disconnectBtn = $("disconnectWalletBtn");
-const accountDisplay = $("account");
-const networkDisplay = $("network");
+const connectBtn = document.getElementById("connectWalletBtn");
+const disconnectBtn = document.getElementById("disconnectWalletBtn");
+const accountDisplay = document.getElementById("account");
+const networkDisplay = document.getElementById("network");
 
-const blockchainSelect = $("blockchainSelect");
-const tokenSelect = $("tokenSelect");
-const tokenAddressDisplay = $("tokenAddressDisplay");
+const blockchainSelect = document.getElementById("blockchainSelect");
+const tokenSelect = document.getElementById("tokenSelect");
+const tokenAddressDisplay = document.getElementById("tokenAddressDisplay");
 
-const intervalSelect = $("intervalSelect");
-const customIntervalInput = $("customInterval");
-const modifyReceiverBtn = $("modifyReceiverBtn");
+const intervalSelect = document.getElementById("intervalSelect");
+const customIntervalInput = document.getElementById("customInterval");
 
-/* =========================================================
-   SHORT LINK
-========================================================= */
-async function shrinkLink(longUrl) {
-  const res = await fetch(
-    `https://api.shrtco.de/v2/shorten?url=${encodeURIComponent(longUrl)}`
-  );
-  if (!res.ok) throw new Error("Shortener failed");
-  const data = await res.json();
-  if (!data.ok) throw new Error("Shortening failed");
-  return data.result.full_short_link;
-}
-
+const modifyReceiverBtn = document.getElementById("modifyReceiverBtn");
 /* =========================================================
    NETWORK HELPERS
 ========================================================= */
@@ -82,34 +342,42 @@ function getNetworkLabel(chainId) {
 
 function getBlockchainKeyByChainId(chainId) {
   return Object.keys(AppConfig.CHAINS).find(
-    (k) => AppConfig.CHAINS[k][AppConfig.ENV].chainId === chainId
+    (key) => AppConfig.CHAINS[key][AppConfig.ENV].chainId === chainId
   );
 }
 
 /* =========================================================
-   SYNC NETWORK
+   SYNC NETWORK (SOURCE OF TRUTH)
 ========================================================= */
 async function syncNetwork() {
-  const chainIdHex = await window.ethereum.request({ method: "eth_chainId" });
-  currentChainId = Number(chainIdHex);
+  const chainIdHex = await window.ethereum.request({
+    method: "eth_chainId",
+  });
 
-  safeSetText("network", `Network: ${getNetworkLabel(currentChainId)}`);
+  currentChainId = Number(chainIdHex);
+  networkDisplay.innerText = `Network: ${getNetworkLabel(currentChainId)}`;
 
   const chainKey = getBlockchainKeyByChainId(currentChainId);
+
   if (!chainKey) {
-    alert("Unsupported network");
+    alert("Unsupported network. Please switch wallet network.");
     return;
   }
 
   blockchainSelect.value = chainKey;
   populateTokens();
+
+  console.log("✅ Connected chain:", currentChainId, chainKey);
 }
 
 /* =========================================================
    WALLET CONNECTION
 ========================================================= */
 async function connectWallet() {
-  if (!window.ethereum) return alert("Wallet required");
+  if (!window.ethereum) {
+    alert("MetaMask required");
+    return;
+  }
 
   provider = new ethers.providers.Web3Provider(window.ethereum, "any");
   await provider.send("eth_requestAccounts", []);
@@ -117,12 +385,15 @@ async function connectWallet() {
   signer = provider.getSigner();
   receiverAddress = await signer.getAddress();
   localStorage.setItem("walletConnected", "true");
+  accountDisplay.innerText = `Wallet: ${receiverAddress}`;
 
-  safeSetText("account", `Wallet: ${receiverAddress}`);
+  // Important for Netlify cold load
+  await new Promise((res) => setTimeout(res, 200));
   await syncNetwork();
 
-  if (connectBtn) connectBtn.style.display = "none";
-  if (disconnectBtn) disconnectBtn.style.display = "inline-block";
+  connectBtn.style.display = "none";
+  disconnectBtn.style.display = "inline-block";
+  await syncNetwork();
 }
 
 async function autoReconnect() {
@@ -132,24 +403,69 @@ async function autoReconnect() {
   provider = new ethers.providers.Web3Provider(window.ethereum, "any");
   const accounts = await provider.listAccounts();
 
-  if (accounts.length) {
+  if (accounts.length > 0) {
     signer = provider.getSigner();
     receiverAddress = accounts[0];
-    safeSetText("account", `Wallet: ${receiverAddress}`);
+
+    accountDisplay.innerText = `Wallet: ${receiverAddress}`;
+    connectBtn.style.display = "none";
+    disconnectBtn.style.display = "inline-block";
+
     await syncNetwork();
   }
 }
 
 function disconnectWallet() {
+  provider = null;
+  signer = null;
+  receiverAddress = null;
   localStorage.removeItem("walletConnected");
-  window.location.reload();
+  accountDisplay.innerText = "";
+  networkDisplay.innerText = "";
+
+  connectBtn.style.display = "inline-block";
+  disconnectBtn.style.display = "none";
 }
 
-safeOnClick("connectWalletBtn", connectWallet);
-safeOnClick("disconnectWalletBtn", disconnectWallet);
+connectBtn.onclick = connectWallet;
+disconnectBtn.onclick = disconnectWallet;
 
 /* =========================================================
-   TOKEN DROPDOWNS
+   UPDATE RECEIVER BUTTON
+========================================================= */
+
+modifyReceiverBtn.onclick = async () => {
+  if (!signer) return alert("Connect wallet");
+
+  const planId = document.getElementById("modifyPlanId").value;
+  const newReceiver = document.getElementById("newReceiverAddress").value;
+
+  if (!planId || !newReceiver) return alert("Missing input");
+
+  const contract = new ethers.Contract(
+    AppConfig.getEmiContract(blockchainSelect.value),
+    contractABI,
+    signer
+  );
+
+  try {
+    const tx = await contract.updateReceiver(planId, newReceiver);
+    await tx.wait();
+    alert("✅ Receiver updated successfully");
+  } catch (err) {
+    console.error(err);
+    alert(err.reason || err.message);
+  }
+};
+
+/* =========================================================
+   AUTO CONNECT ON LOAD
+========================================================= */
+
+window.addEventListener("load", autoReconnect);
+
+/* =========================================================
+   CHAIN & TOKEN DROPDOWNS
 ========================================================= */
 Object.entries(AppConfig.CHAINS).forEach(([key, cfg]) => {
   const opt = document.createElement("option");
@@ -165,9 +481,9 @@ function populateTokens() {
   const tokens = AppConfig.getTokens(blockchainSelect.value);
   if (!tokens) return;
 
-  Object.entries(tokens).forEach(([symbol, addr]) => {
+  Object.entries(tokens).forEach(([symbol, address]) => {
     const opt = document.createElement("option");
-    opt.value = addr;
+    opt.value = address;
     opt.textContent = symbol;
     tokenSelect.appendChild(opt);
   });
@@ -175,371 +491,239 @@ function populateTokens() {
   tokenAddressDisplay.value = tokenSelect.value || "";
 }
 
-blockchainSelect?.addEventListener("change", populateTokens);
-tokenSelect?.addEventListener("change", () => {
+blockchainSelect.addEventListener("change", populateTokens);
+tokenSelect.addEventListener("change", () => {
   tokenAddressDisplay.value = tokenSelect.value || "";
 });
 
 /* =========================================================
-   DEEP LINK GENERATION
+   INTERVAL HANDLING
 ========================================================= */
-function generateDeepLinks(planId, chainId) {
-  const base = `${location.origin}/sender.html?planId=${planId}&chainId=${chainId}`;
-
-  return {
-    universal: base,
-    metaMask: `https://metamask.app.link/dapp/${location.host}/sender.html?planId=${planId}&chainId=${chainId}`,
-    trustWallet: `https://link.trustwallet.com/open_url?coin_id=60&url=${encodeURIComponent(
-      base
-    )}`,
-  };
-}
+intervalSelect.addEventListener("change", () => {
+  customIntervalInput.style.display =
+    intervalSelect.value === "custom" ? "block" : "none";
+});
 
 /* =========================================================
-   CREATE PLAN
+   CREATE EMI PLAN
 ========================================================= */
-safeOnClick("createPlanBtn", async () => {
-  if (!signer) return alert("Connect wallet");
+document.getElementById("createPlanBtn").onclick = async () => {
+  if (!signer) return alert("Connect MetaMask");
 
-  const emi = $("emiAmount").value;
-  const total = $("totalAmount").value;
-  if (!emi || !total) return alert("Missing amounts");
+  const blockchain = blockchainSelect.value;
+  const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex]?.text;
 
-  const intervalSeconds =
+  const emiInput = document.getElementById("emiAmount").value;
+  const totalInput = document.getElementById("totalAmount").value;
+
+  if (!emiInput || !totalInput) {
+    return alert("EMI & Total required");
+  }
+
+  const tokenMeta = AppConfig.getTokenMeta(blockchain, tokenSymbol);
+  if (!tokenMeta) return alert("Token metadata missing");
+
+  let intervalSeconds =
     intervalSelect.value === "custom"
       ? Number(customIntervalInput.value) * 60
       : Number(intervalSelect.value);
 
-  const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex].text;
-  const meta = AppConfig.getTokenMeta(blockchainSelect.value, tokenSymbol);
+  if (intervalSeconds < 60) return alert("Minimum 60 seconds");
+
+  const emi = ethers.utils.parseUnits(emiInput, tokenMeta.decimals);
+  const total = ethers.utils.parseUnits(totalInput, tokenMeta.decimals);
 
   const contract = new ethers.Contract(
-    AppConfig.getEmiContract(blockchainSelect.value),
+    AppConfig.getEmiContract(blockchain),
     contractABI,
     signer
   );
 
-  const tx = await contract.createPlan(
-    ethers.utils.parseUnits(emi, meta.decimals),
-    intervalSeconds,
-    ethers.utils.parseUnits(total, meta.decimals)
-  );
+  let planId;
 
-  const receipt = await tx.wait();
-  const event = receipt.events.find((e) => e.event === "PlanCreated");
-  const planId = event.args.planId.toString();
+  try {
+    const tx = await contract.createPlan(emi, intervalSeconds, total);
+    const receipt = await tx.wait(1);
 
-  const links = generateDeepLinks(planId, currentChainId);
+    const event = receipt.events?.find(
+      (e) => e.event === "PlanCreated" && e.args?.planId
+    );
 
-  originalUniversalLink = links.universal;
-  originalMetaMaskLink = links.metaMask;
-  originalTrustWalletLink = links.trustWallet;
+    if (!event) throw new Error("PlanCreated missing");
 
-  safeSetValue("metamaskLinkOutput", links.metaMask);
-  safeSetValue("trustwalletLinkOutput", links.trustWallet);
+    planId = event.args.planId.toString();
+  } catch (err) {
+    console.error(err);
+    alert(err.reason || err.message || "Create plan failed");
+    return;
+  }
 
-  renderQR(links.universal);
-  safeShow("shareSection");
-});
+  /* =====================================================
+     DEEPLINK + QR
+  ===================================================== */
+  const host = window.location.origin.replace("https://", "");
 
+  // Base sender URL (same logic)
+  const senderUrl = `${window.location.origin}/sender.html?planId=${planId}&chainId=${currentChainId}`;
+
+  // MetaMask deep link (EXACT same as before)
+  const metamaskLink =
+    `https://metamask.app.link/dapp/${host}` +
+    `/sender.html?planId=${planId}&chainId=${currentChainId}`;
+
+  // Trust Wallet deep link
+  const trustWalletLink =
+    `https://link.trustwallet.com/open_url` +
+    `?coin_id=60` +
+    `&url=${encodeURIComponent(senderUrl)}`;
+
+  // Set outputs
+  document.getElementById("metamaskLinkOutput").value = metamaskLink;
+  document.getElementById("trustwalletLinkOutput").value = trustWalletLink;
+
+  // QR → universal sender URL (wallet decides)
+  renderQR(senderUrl);
+
+  document.getElementById("shareSection").style.display = "block";
+};
 /* =========================================================
    QR
 ========================================================= */
 function renderQR(text) {
-  const canvas = $("qrCanvas");
-  if (!canvas) return;
-  QRCode.toCanvas(canvas, text, { width: 240 });
+  const canvas = document.getElementById("qrCanvas");
+  QRCode.toCanvas(canvas, text, { width: 240 }, (err) => {
+    if (err) console.error(err);
+  });
 }
 
 /* =========================================================
-   SHRINK + COPY
+   METAMASK EVENTS
 ========================================================= */
-safeOnClick("copyLinkBtnMetamask", () =>
-  navigator.clipboard.writeText($("metamaskLinkOutput").value)
-);
+if (window.ethereum) {
+  window.ethereum.on("chainChanged", async () => {
+    await syncNetwork();
+  });
 
-safeOnClick("copyLinkBtnTrustwallet", () =>
-  navigator.clipboard.writeText($("trustwalletLinkOutput").value)
-);
+  window.ethereum.on("accountsChanged", () => {
+    window.location.reload();
+  });
+}
 
-safeOnClick("shrinkLinkBtnMetamask", async () => {
-  const input = $("metamaskLinkOutput");
-  if (!input?.value) return;
-  input.value = await shrinkLink(originalMetaMaskLink || input.value);
-});
+// Plan ID: ${planId}
+// New Receiver: ${newReceiver}
 
-safeOnClick("shrinkLinkBtnTrustwallet", async () => {
-  const input = $("trustwalletLinkOutput");
-  if (!input?.value) return;
-  input.value = await shrinkLink(originalTrustWalletLink || input.value);
-});
+// All future EMI payments will go to the new address.
+//       `.trim()document.getElementById("modifyReceiverBtn").onclick = async () => {
+//   if (!signer) return alert("Connect wallet first");
 
-/* =========================================================
-   INIT
-========================================================= */
-document.addEventListener("DOMContentLoaded", autoReconnect);
+//   try {
+//     const planId = document.getElementById("modifyPlanId").value.trim();
+//     const newReceiver = document
+//       .getElementById("newReceiverAddress")
+//       .value.trim();
 
+//     if (!planId || isNaN(planId)) return alert("Invalid Plan ID");
+//     if (!ethers.utils.isAddress(newReceiver))
+//       return alert("Invalid receiver address");
 
+//     const blockchain = blockchainSelect.value;
+//     if (blockchain === "tron")
+//       return alert("Receiver modification for TRON handled separately");
 
+//     const contractAddress = AppConfig.getEmiContract(blockchain);
+//     const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
+//     const tx = await contract.modifyReceiver(planId, newReceiver);
+//     await tx.wait();
 
+//     alert(
+//       `
+// ✅ RECEIVER
+//     );
+//   } catch (err) {
+//     console.error(err);
+//     alert(err?.reason || err?.message || "Receiver update failed");
+//   }
+// };
 
+// receiver.js --permit based ERC20(USDT,DAI,USDC)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// receiver.js --permit based ERC20 AND TRC20
 // import { AppConfig } from "./config.js";
 // import { contractABI } from "./abi.js";
-// import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm";
-
-// /* =========================================================
-//    SAFE DOM HELPERS (CRITICAL FIX)
-// ========================================================= */
-// function $(id) {
-//   return document.getElementById(id);
-// }
-
-// function safeSetValue(id, value) {
-//   const el = $(id);
-//   if (el) el.value = value;
-// }
-
-// function safeSetText(id, text) {
-//   const el = $(id);
-//   if (el) el.innerText = text;
-// }
-
-// function safeShow(id) {
-//   const el = $(id);
-//   if (el) el.style.display = "block";
-// }
-
-// function safeOnClick(id, handler) {
-//   const el = $(id);
-//   if (el) el.onclick = handler;
-// }
 
 // /* =========================================================
 //    GLOBAL STATE
 // ========================================================= */
-// let provider;
-// let signer;
-// let receiverAddress;
-// let currentChainId;
+// let provider = null;
+// let signer = null;
+// let receiverAddress = null;
 
-// /* =========================================================
-//    WALLET-SPECIFIC DEEP LINK STORAGE
-// ========================================================= */
-// let originalMetaMaskLink = null;
-// let originalTrustWalletLink = null;
-// let originalUniversalLink = null;
 // /* =========================================================
 //    UI ELEMENTS
 // ========================================================= */
-// const connectBtn = $("connectWalletBtn");
-// const disconnectBtn = $("disconnectWalletBtn");
-// const accountDisplay = $("account");
-// const networkDisplay = $("network");
+// const connectBtn = document.getElementById("connectWalletBtn");
+// const disconnectBtn = document.getElementById("disconnectWalletBtn");
+// const accountDisplay = document.getElementById("account");
+// const networkDisplay = document.getElementById("network");
 
-// const blockchainSelect = $("blockchainSelect");
-// const tokenSelect = $("tokenSelect");
-// const tokenAddressDisplay = $("tokenAddressDisplay");
+// const blockchainSelect = document.getElementById("blockchainSelect");
+// const tokenSelect = document.getElementById("tokenSelect");
+// const tokenAddressDisplay = document.getElementById("tokenAddressDisplay");
 
-// const intervalSelect = $("intervalSelect");
-// const customIntervalInput = $("customInterval");
-// const modifyReceiverBtn = $("modifyReceiverBtn");
-
-
+// const intervalSelect = document.getElementById("intervalSelect");
+// const customIntervalInput = document.getElementById("customInterval");
 
 // /* =========================================================
-//    SHRINK LINK FUNCTIONALITY
-// ========================================================= */
-// async function shrinkLink(longUrl) {
-//   const res = await fetch(
-//     `https://api.shrtco.de/v2/shorten?url=${encodeURIComponent(longUrl)}`
-//   );
-
-//   if (!res.ok) {
-//     throw new Error("Shortener API failed");
-//   }
-
-//   const data = await res.json();
-
-//   if (!data.ok) {
-//     throw new Error("Shortening failed");
-//   }
-
-//   return data.result.full_short_link;
-// }
-
-// function copyTextById(id) {
-//   const el = document.getElementById(id);
-//   el.select();
-//   el.setSelectionRange(0, 99999);
-//   navigator.clipboard.writeText(el.value);
-//   alert("📋 Link copied!");
-// }
-
-// /* =========================================================
-//    NETWORK HELPERS
-// ========================================================= */
-// function getNetworkLabel(chainId) {
-//   if (chainId === 1) return "Ethereum Mainnet";
-//   if (chainId === 11155111) return "Sepolia Testnet";
-//   return `Unknown (${chainId})`;
-// }
-
-// function getBlockchainKeyByChainId(chainId) {
-//   return Object.keys(AppConfig.CHAINS).find(
-//     (key) => AppConfig.CHAINS[key][AppConfig.ENV].chainId === chainId
-//   );
-// }
-
-// /* =========================================================
-//    SYNC NETWORK (SOURCE OF TRUTH)
-// ========================================================= */
-// async function syncNetwork() {
-//   const chainIdHex = await window.ethereum.request({
-//     method: "eth_chainId",
-//   });
-
-//   currentChainId = Number(chainIdHex);
-//  safeSetText("network", `Network: ${getNetworkLabel(currentChainId)}`);
-
-//   const chainKey = getBlockchainKeyByChainId(currentChainId);
-
-//   if (!chainKey) {
-//     alert("Unsupported network. Please switch wallet network.");
-//     return;
-//   }
-
-//   blockchainSelect.value = chainKey;
-//   populateTokens();
-
-//   console.log("✅ Connected chain:", currentChainId, chainKey);
-// }
-
-// /* =========================================================
-//    WALLET CONNECTION
+//    WALLET (RECEIVER ONLY)
 // ========================================================= */
 // async function connectWallet() {
 //   if (!window.ethereum) {
-//     alert("MetaMask or compatible wallet required");
+//     alert("MetaMask not detected");
 //     return;
 //   }
 
-//   provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+//   provider = new ethers.providers.Web3Provider(window.ethereum);
 //   await provider.send("eth_requestAccounts", []);
 
 //   signer = provider.getSigner();
 //   receiverAddress = await signer.getAddress();
-//   localStorage.setItem("walletConnected", "true");
-//  safeSetText("account", `Wallet: ${receiverAddress}`);
 
-//   await new Promise((res) => setTimeout(res, 200));
-//   await syncNetwork();
+//   const network = await provider.getNetwork();
+
+//   accountDisplay.innerText = `Wallet: ${receiverAddress}`;
+//   networkDisplay.innerText = `Network: ${network.name} (${network.chainId})`;
 
 //   connectBtn.style.display = "none";
 //   disconnectBtn.style.display = "inline-block";
-// }
 
-// async function autoReconnect() {
-//   if (localStorage.getItem("walletConnected") !== "true") return;
-//   if (!window.ethereum) return;
-
-//   provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-//   const accounts = await provider.listAccounts();
-
-//   if (accounts.length > 0) {
-//     signer = provider.getSigner();
-//     receiverAddress = accounts[0];
-// safeSetText("account", `Wallet: ${receiverAddress}`);
-//     connectBtn.style.display = "none";
-//     disconnectBtn.style.display = "inline-block";
-
-//     await syncNetwork();
-//   }
+//   sessionStorage.setItem("receiverAddress", receiverAddress);
 // }
 
 // function disconnectWallet() {
 //   provider = null;
 //   signer = null;
 //   receiverAddress = null;
-//   localStorage.removeItem("walletConnected");
+
 //   accountDisplay.innerText = "";
 //   networkDisplay.innerText = "";
 
 //   connectBtn.style.display = "inline-block";
 //   disconnectBtn.style.display = "none";
+
+//   sessionStorage.clear();
 // }
 
 // connectBtn.onclick = connectWallet;
 // disconnectBtn.onclick = disconnectWallet;
 
 // /* =========================================================
-//    UPDATE RECEIVER BUTTON
+//    DROPDOWNS (CHAIN + TOKEN)
 // ========================================================= */
-// modifyReceiverBtn.onclick = async () => {
-//   if (!signer) return alert("Connect wallet");
-
-//   const planId = document.getElementById("modifyPlanId").value;
-//   const newReceiver = document.getElementById("newReceiverAddress").value;
-
-//   if (!planId || !newReceiver) return alert("Missing input");
-
-//   const contract = new ethers.Contract(
-//     AppConfig.getEmiContract(blockchainSelect.value),
-//     contractABI,
-//     signer
-//   );
-
-//   try {
-//     const tx = await contract.updateReceiver(planId, newReceiver);
-//     await tx.wait();
-//     alert("✅ Receiver updated successfully");
-//   } catch (err) {
-//     console.error(err);
-//     alert(err.reason || err.message);
-//   }
-// };
-
-// /* =========================================================
-//    AUTO CONNECT ON LOAD
-// ========================================================= */
-// window.addEventListener("load", autoReconnect);
-
-// /* =========================================================
-//    CHAIN & TOKEN DROPDOWNS
-// ========================================================= */
-// Object.entries(AppConfig.CHAINS).forEach(([key, cfg]) => {
+// Object.keys(AppConfig.CHAINS).forEach((chainKey) => {
 //   const opt = document.createElement("option");
-//   opt.value = key;
-//   opt.textContent = cfg.name;
+//   opt.value = chainKey;
+//   opt.text = AppConfig.CHAINS[chainKey].name;
 //   blockchainSelect.appendChild(opt);
 // });
 
@@ -548,12 +732,10 @@ document.addEventListener("DOMContentLoaded", autoReconnect);
 //   tokenAddressDisplay.value = "";
 
 //   const tokens = AppConfig.getTokens(blockchainSelect.value);
-//   if (!tokens) return;
-
 //   Object.entries(tokens).forEach(([symbol, address]) => {
 //     const opt = document.createElement("option");
 //     opt.value = address;
-//     opt.textContent = symbol;
+//     opt.text = symbol;
 //     tokenSelect.appendChild(opt);
 //   });
 
@@ -565,6 +747,8 @@ document.addEventListener("DOMContentLoaded", autoReconnect);
 //   tokenAddressDisplay.value = tokenSelect.value || "";
 // });
 
+// populateTokens();
+
 // /* =========================================================
 //    INTERVAL HANDLING
 // ========================================================= */
@@ -574,211 +758,406 @@ document.addEventListener("DOMContentLoaded", autoReconnect);
 // });
 
 // /* =========================================================
-//    GENERATE WALLET-SPECIFIC DEEP LINKS
-// ========================================================= */
-// function generateDeepLinks(planId, chainId) {
-//   const host = window.location.origin;
-//   const senderPath = `/sender.html?planId=${planId}&chainId=${chainId}`;
-
-//   // Universal link (for QR code and general use)
-//   const universalLink = `${host}${senderPath}`;
-
-//   // MetaMask Deep Link
-//   const metaMaskLink = `https://metamask.app.link/dapp/${host.replace(
-//     "https://",
-//     ""
-//   )}${senderPath}`;
-
-//   // TrustWallet Deep Link
-//   const trustWalletLink = `https://link.trustwallet.com/open_url?coin_id=60&url=${encodeURIComponent(
-//     universalLink
-//   )}`;
-
-//   return {
-//     universal: universalLink,
-//     metaMask: metaMaskLink,
-//     trustWallet: trustWalletLink,
-//   };
-// }
-
-// /* =========================================================
-//    CREATE EMI PLAN
+//    CREATE EMI PLAN (RECEIVER)
 // ========================================================= */
 // document.getElementById("createPlanBtn").onclick = async () => {
-//   if (!signer) return alert("Connect MetaMask");
+//   if (!signer) return alert("Connect receiver wallet first");
 
 //   const blockchain = blockchainSelect.value;
-//   const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex]?.text;
 
-//   const emiInput = document.getElementById("emiAmount").value;
-//   const totalInput = document.getElementById("totalAmount").value;
-
-//   if (!emiInput || !totalInput) {
-//     return alert("EMI & Total required");
-//   }
-
-//   const tokenMeta = AppConfig.getTokenMeta(blockchain, tokenSymbol);
-//   if (!tokenMeta) return alert("Token metadata missing");
-
-//   let intervalSeconds =
-//     intervalSelect.value === "custom"
-//       ? Number(customIntervalInput.value) * 60
-//       : Number(intervalSelect.value);
-
-//   if (intervalSeconds < 60) return alert("Minimum 60 seconds");
-
-//   const emi = ethers.utils.parseUnits(emiInput, tokenMeta.decimals);
-//   const total = ethers.utils.parseUnits(totalInput, tokenMeta.decimals);
-
-//   const contract = new ethers.Contract(
-//     AppConfig.getEmiContract(blockchain),
-//     contractABI,
-//     signer
-//   );
-
-//   let planId;
-
-//   try {
-//     const tx = await contract.createPlan(emi, intervalSeconds, total);
-//     const receipt = await tx.wait(1);
-
-//     const event = receipt.events?.find(
-//       (e) => e.event === "PlanCreated" && e.args?.planId
+//   /* ---------- TRON BLOCK ---------- */
+//   if (blockchain === "tron") {
+//     alert(
+//       "TRON EMI plans require a separate TronLink-based flow.\nThis panel supports EVM only."
 //     );
-
-//     if (!event) throw new Error("PlanCreated missing");
-
-//     planId = event.args.planId.toString();
-//   } catch (err) {
-//     console.error(err);
-//     alert(err.reason || err.message || "Create plan failed");
 //     return;
 //   }
 
-//   /* =====================================================
-//      GENERATE ALL WALLET-SPECIFIC LINKS
-//   ===================================================== */
-//   const links = generateDeepLinks(planId, currentChainId);
-
-//   // Store original links
-//   originalUniversalLink = links.universal;
-//   originalMetaMaskLink = links.metaMask;
-//   originalTrustWalletLink = links.trustWallet;
-
-//   // Display MetaMask link by default
-//   document.getElementById("metamaskLinkOutput").value = links.metaMask;
-//   document.getElementById("trustwalletLinkOutput").value = links.trustWallet;
-
-//   // Generate QR for universal link
-//   renderQR(links.universal);
-
-//   // Show share section
-//   document.getElementById("shareSection").style.display = "block";
-
-//   // Reset shrink status
-//   document.getElementById("shrinkStatusMetamask").innerText = "";
-//   document.getElementById("shrinkStatusTrustwallet").innerText = "";
-// };
-
-// /* =========================================================
-//    QR CODE GENERATION
-// ========================================================= */
-// function renderQR(text) {
-//   const canvas = document.getElementById("qrCanvas");
-//   QRCode.toCanvas(canvas, text, { width: 240 }, (err) => {
-//     if (err) console.error(err);
-//   });
-// }
-
-// /* =========================================================
-//    DOWNLOAD QR CODE
-// ========================================================= */
-// window.downloadQR = function () {
-//   const canvas = document.getElementById("qrCanvas");
-//   const url = canvas.toDataURL("image/png");
-//   const a = document.createElement("a");
-//   a.href = url;
-//   a.download = "emi-payment-qr.png";
-//   a.click();
-// };
-
-// /* =========================================================
-//    METAMASK EVENTS
-// ========================================================= */
-// if (window.ethereum) {
-//   window.ethereum.on("chainChanged", async () => {
-//     await syncNetwork();
-//   });
-
-//   window.ethereum.on("accountsChanged", () => {
-//     window.location.reload();
-//   });
-// }
-
-// /* =========================================================
-//    BUTTON HANDLERS FOR METAMASK
-// ========================================================= */
-// const shrinkBtnMetamask = document.getElementById("shrinkLinkBtnMetamask");
-// const copyBtnMetamask = document.getElementById("copyLinkBtnMetamask");
-// const statusTextMetamask = document.getElementById("shrinkStatusMetamask");
-
-// copyBtnMetamask.onclick = () => copyTextById("metamaskLinkOutput");
-
-// shrinkBtnMetamask.onclick = async () => {
-//   const input = document.getElementById("metamaskLinkOutput");
-
-//   if (!input.value) return;
-
 //   try {
-//     statusTextMetamask.innerText = "🔄 Shrinking link...";
-//     shrinkBtnMetamask.disabled = true;
+//     const tokenAddress = tokenSelect.value;
+//     const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex].text;
 
-//     // Use original link if already shortened
-//     const linkToShrink = originalMetaMaskLink || input.value;
-//     const shortUrl = await shrinkLink(linkToShrink);
-//     input.value = shortUrl;
+//     const emiAmountInput = document.getElementById("emiAmount").value;
+//     const totalAmountInput = document.getElementById("totalAmount").value;
 
-//     statusTextMetamask.innerText = "✅ Link shortened";
+//     if (!ethers.utils.isAddress(tokenAddress))
+//       return alert("Invalid token address");
+
+//     if (!emiAmountInput || !totalAmountInput)
+//       return alert("Amount fields required");
+
+//     const tokenMeta = AppConfig.getTokenMeta(blockchain, tokenSymbol);
+//     if (!tokenMeta) return alert("Token metadata not configured");
+
+//     const decimals = tokenMeta.decimals;
+
+//     const emiAmount = ethers.utils.parseUnits(emiAmountInput, decimals);
+//     const totalAmount = ethers.utils.parseUnits(totalAmountInput, decimals);
+
+//     let intervalSeconds =
+//       intervalSelect.value === "custom"
+//         ? Number(customIntervalInput.value) * 60
+//         : Number(intervalSelect.value);
+
+//     if (intervalSeconds < 60)
+//       return alert("Interval must be at least 60 seconds");
+
+//     const contractAddress = AppConfig.getEmiContract(blockchain);
+//     const contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+//     const tx = await contract.createEmiPlan(
+//       receiverAddress,
+//       tokenAddress,
+//       emiAmount,
+//       intervalSeconds,
+//       totalAmount
+//     );
+
+//     alert("Transaction sent. Waiting for confirmation...");
+//     const receipt = await tx.wait();
+
+//     const createdEvent = receipt.events.find(
+//       (e) => e.event === "EmiPlanCreated"
+//     );
+//     if (!createdEvent) throw new Error("Plan creation event missing");
+
+//     const planId = createdEvent.args.planId.toString();
+
+//     alert(
+//       `
+// ✅ EMI PLAN CREATED
+
+// Plan ID: ${planId}
+// Receiver: ${receiverAddress}
+// Token: ${tokenSymbol}
+// EMI Amount: ${emiAmountInput}
+// Total Amount: ${totalAmountInput}
+// Interval: ${intervalSeconds / 60} minutes
+
+// NEXT STEPS:
+// • Share Plan ID with sender
+// • Sender approves contract once
+// • Sender activates EMI
+// • Auto-pay starts
+
+// ⚠ Sender never connects here
+//       `.trim()
+//     );
+
+//     setupEventListeners(contract, planId, tokenSymbol, decimals);
 //   } catch (err) {
 //     console.error(err);
-//     statusTextMetamask.innerText = "❌ Failed to shrink link";
-//   } finally {
-//     shrinkBtnMetamask.disabled = false;
+//     alert(err?.reason || err?.message || "Failed to create EMI plan");
 //   }
 // };
 
 // /* =========================================================
-//    BUTTON HANDLERS FOR TRUSTWALLET
+//    EVENT MONITORING
 // ========================================================= */
-// const shrinkBtnTrustwallet = document.getElementById(
-//   "shrinkLinkBtnTrustwallet"
-// );
-// const copyBtnTrustwallet = document.getElementById("copyLinkBtnTrustwallet");
-// const statusTextTrustwallet = document.getElementById(
-//   "shrinkStatusTrustwallet"
-// );
+// function setupEventListeners(contract, planId, symbol, decimals) {
+//   contract.on("PlanActivated", (pid, sender) => {
+//     if (pid.toString() !== planId) return;
+//     alert(`✅ EMI Activated by Sender:\n${sender}`);
+//   });
 
-// copyBtnTrustwallet.onclick = () => copyTextById("trustwalletLinkOutput");
+//   contract.on("EmiPaid", (pid, receiver, amount) => {
+//     if (pid.toString() !== planId) return;
+//     alert(
+//       `💰 EMI RECEIVED\n${ethers.utils.formatUnits(amount, decimals)} ${symbol}`
+//     );
+//   });
 
-// shrinkBtnTrustwallet.onclick = async () => {
-//   const input = document.getElementById("trustwalletLinkOutput");
+//   contract.on("EmiCompleted", (pid) => {
+//     if (pid.toString() !== planId) return;
+//     alert("🎉 EMI PLAN COMPLETED");
+//   });
 
-//   if (!input.value) return;
+//   contract.on("ReceiverModified", (pid, oldR, newR) => {
+//     if (pid.toString() !== planId) return;
+//     alert(`🔁 Receiver Updated\n\nOld: ${oldR}\nNew: ${newR}`);
+//   });
+
+//   console.log("📡 EMI event listeners active");
+// }
+
+// /* =========================================================
+//    MODIFY RECEIVER
+// ========================================================= */
+// UPDATED
+
+// Plan ID: ${planId}
+// New Receiver: ${newReceiver}
+
+// All future EMI payments will go to the new address.
+//       `.trim()document.getElementById("modifyReceiverBtn").onclick = async () => {
+//   if (!signer) return alert("Connect wallet first");
 
 //   try {
-//     statusTextTrustwallet.innerText = "🔄 Shrinking link...";
-//     shrinkBtnTrustwallet.disabled = true;
+//     const planId = document.getElementById("modifyPlanId").value.trim();
+//     const newReceiver = document
+//       .getElementById("newReceiverAddress")
+//       .value.trim();
 
-//     // Use original link if already shortened
-//     const linkToShrink = originalTrustWalletLink || input.value;
-//     const shortUrl = await shrinkLink(linkToShrink);
-//     input.value = shortUrl;
+//     if (!planId || isNaN(planId)) return alert("Invalid Plan ID");
+//     if (!ethers.utils.isAddress(newReceiver))
+//       return alert("Invalid receiver address");
 
-//     statusTextTrustwallet.innerText = "✅ Link shortened";
+//     const blockchain = blockchainSelect.value;
+//     if (blockchain === "tron")
+//       return alert("Receiver modification for TRON handled separately");
+
+//     const contractAddress = AppConfig.getEmiContract(blockchain);
+//     const contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+//     const tx = await contract.modifyReceiver(planId, newReceiver);
+//     await tx.wait();
+
+//     alert(
+//       `
+// ✅ RECEIVER
+//     );
 //   } catch (err) {
 //     console.error(err);
-//     statusTextTrustwallet.innerText = "❌ Failed to shrink link";
-//   } finally {
-//     shrinkBtnTrustwallet.disabled = false;
+//     alert(err?.reason || err?.message || "Receiver update failed");
 //   }
+// };
+
+// Listen for ReceiverModified event
+// contract.on("ReceiverModified", (pid, oldR, newR) => {
+//   if (!pid.eq(planId)) return;
+
+//   alert(
+//     `🔁 Receiver Updated!\n\nOld Receiver:\n${oldR}\n\nNew Receiver:\n${newR}`
+//   );
+// });
+// document.getElementById("modifyReceiverBtn").onclick = async () => {
+//   if (!signer) return alert("Connect wallet first");
+
+//   try {
+//     const planId = document.getElementById("modifyPlanId").value.trim();
+//     const newReceiver = document
+//       .getElementById("newReceiverAddress")
+//       .value.trim();
+
+//     if (!planId || isNaN(planId)) return alert("Invalid Plan ID");
+//     if (!ethers.utils.isAddress(newReceiver))
+//       return alert("Invalid receiver address");
+
+//     const blockchain = blockchainSelect.value;
+//     const contractAddress = AppConfig.getEmiContract(blockchain);
+//     const contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+//     const tx = await contract.modifyReceiver(planId, newReceiver);
+//     await tx.wait();
+
+//     alert(
+//       `
+// ✅ Receiver Updated Successfully
+
+// Plan ID: ${planId}
+// New Receiver: ${newReceiver}
+
+// All future EMI payments will be sent to this address.
+//     `.trim()
+//     );
+//   } catch (err) {
+//     console.error(err);
+//     alert(err?.reason || err?.message || "Modify failed");
+//   }
+// };
+
+// IMPORTANT: Share the following with the sender:
+// - Plan ID: ${planId.toString()}
+// - Contract Address: ${contractAddress}
+
+//escrow model -- the moeny needs to be deposited at a time only. (sender to contract to receiver)
+// import { AppConfig } from "./config.js";
+// import { contractABI } from "./abi.js";
+
+// let provider, signer;
+
+// /* ================= WALLET ELEMENTS ================= */
+// const connectBtn = document.getElementById("connectWalletBtn");
+// const disconnectBtn = document.getElementById("disconnectWalletBtn");
+// const accountDisplay = document.getElementById("account");
+// const networkDisplay = document.getElementById("network");
+
+// const blockchainSelect = document.getElementById("blockchainSelect");
+// const tokenSelect = document.getElementById("tokenSelect");
+// const intervalSelect = document.getElementById("intervalSelect");
+// const customIntervalInput = document.getElementById("customInterval");
+
+// /* ================= WALLET CONNECTION ================= */
+// async function connectWallet() {
+//   if (!window.ethereum) return alert("Install MetaMask");
+
+//   provider = new ethers.providers.Web3Provider(window.ethereum);
+//   await provider.send("eth_requestAccounts", []);
+//   signer = provider.getSigner();
+
+//   const address = await signer.getAddress();
+//   const network = await provider.getNetwork();
+
+//   accountDisplay.innerText = `Wallet: ${address}`;
+//   networkDisplay.innerText = `Network: ${network.name} (${network.chainId})`;
+
+//   connectBtn.style.display = "none";
+//   disconnectBtn.style.display = "inline-block";
+// }
+
+// async function disconnectWallet() {
+//   signer = null;
+//   provider = null;
+//   accountDisplay.innerText = "";
+//   networkDisplay.innerText = "";
+//   connectBtn.style.display = "inline-block";
+//   disconnectBtn.style.display = "none";
+// }
+
+// connectBtn.onclick = connectWallet;
+// disconnectBtn.onclick = disconnectWallet;
+
+// /* ================= DROPDOWNS ================= */
+// Object.keys(AppConfig.CHAINS).forEach((key) => {
+//   const opt = document.createElement("option");
+//   opt.value = key;
+//   opt.text = AppConfig.CHAINS[key].name;
+//   blockchainSelect.appendChild(opt);
+// });
+
+// function populateTokens() {
+//   tokenSelect.innerHTML = "";
+//   const tokens = AppConfig.getTokens(blockchainSelect.value);
+//   for (const name in tokens) {
+//     const opt = document.createElement("option");
+//     opt.value = tokens[name];
+//     opt.text = name;
+//     tokenSelect.appendChild(opt);
+//   }
+// }
+
+// const tokenAddressDisplay = document.getElementById("tokenAddressDisplay");
+// tokenSelect.onchange = () => (tokenAddressDisplay.value = tokenSelect.value);
+
+// blockchainSelect.onchange = () => {
+//   populateTokens();
+//   tokenAddressDisplay.value = tokenSelect.value;
+// };
+
+// populateTokens();
+// tokenAddressDisplay.value = tokenSelect.value;
+
+// intervalSelect.onchange = () => {
+//   customIntervalInput.style.display =
+//     intervalSelect.value === "custom" ? "inline-block" : "none";
+// };
+
+// /* ================= CREATE EMI PLAN (ESCROW) ================= */
+// document.getElementById("createPlanBtn").onclick = async () => {
+//   if (!signer) return alert("Connect wallet first");
+
+//   try {
+//     const tokenAddress = tokenSelect.value;
+//     const tokenSymbol = tokenSelect.options[tokenSelect.selectedIndex].text;
+
+//     const emiAmountInput = document.getElementById("emiAmount").value;
+//     const totalAmountInput = document.getElementById("totalAmount").value;
+
+//     let interval =
+//       intervalSelect.value === "custom"
+//         ? Number(customIntervalInput.value) * 60
+//         : Number(intervalSelect.value);
+
+//     if (interval < 60) return alert("Interval must be ≥ 1 minute");
+
+//     const decimals = AppConfig.TOKEN_DECIMALS[tokenSymbol];
+//     const emiAmount = ethers.utils.parseUnits(emiAmountInput, decimals);
+//     const totalAmount = ethers.utils.parseUnits(totalAmountInput, decimals);
+
+//     const contractAddress = AppConfig.getEmiContract(blockchainSelect.value);
+//     const contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+//     /* Receiver ONLY creates plan */
+//     const tx = await contract.createEmiPlan(
+//       tokenAddress,
+//       emiAmount,
+//       interval,
+//       totalAmount
+//     );
+
+//     const receipt = await tx.wait();
+//     const event = receipt.events.find((e) => e.event === "EmiPlanCreated");
+//     const planId = event.args.planId.toString();
+
+//     /* SHARE WITH SENDER */
+//     alert(
+//       `
+// ✅ EMI PLAN CREATED (ESCROW MODE)
+
+// PLAN ID: ${planId}
+// CONTRACT: ${contractAddress}
+// TOKEN: ${tokenSymbol}
+// TOTAL DEPOSIT: ${totalAmountInput} ${tokenSymbol}
+
+// 📌 SENDER INSTRUCTIONS:
+// 1. Approve ${totalAmountInput} ${tokenSymbol} to contract
+// 2. Call deposit(${planId}, ${totalAmountInput})
+// (from any wallet / script / dApp)
+// ⚡ Auto EMI starts automatically
+// Receiver does NOTHING further
+//     `.trim()
+//     );
+
+//     setupEventListeners(contract, planId, tokenSymbol, decimals);
+//   } catch (err) {
+//     console.error(err);
+//     alert(err?.reason || err?.message || "Error creating plan");
+//   }
+// };
+
+// /* ================= EVENT LISTENERS ================= */
+// function setupEventListeners(contract, planId, tokenSymbol, decimals) {
+//   contract.on("Deposited", (pid, sender, amount) => {
+//     if (pid.toString() !== planId) return;
+//     alert(`💰 Deposit received from ${sender}`);
+//   });
+
+//   contract.on("EmiReleased", (pid, amount) => {
+//     if (pid.toString() !== planId) return;
+//     alert(
+//       `📤 EMI Released: ${ethers.utils.formatUnits(
+//         amount,
+//         decimals
+//       )} ${tokenSymbol}`
+//     );
+//   });
+
+//   contract.on("PlanCompleted", (pid) => {
+//     if (pid.toString() !== planId) return;
+//     alert("🎉 EMI PLAN COMPLETED");
+//   });
+// }
+
+// /* ================= CHECK PLAN STATUS ================= */
+// window.checkPlanStatus = async (planId) => {
+//   if (!provider) return alert("Connect wallet");
+
+//   const contract = new ethers.Contract(
+//     AppConfig.getEmiContract(blockchainSelect.value),
+//     contractABI,
+//     provider
+//   );
+
+//   const p = await contract.plans(planId);
+
+//   alert(
+//     `
+// PLAN ${planId}
+// Receiver: ${p.receiver}
+// Sender: ${p.sender}
+// Released: ${ethers.utils.formatUnits(p.amountReleased)}
+// Active: ${p.active}
+// Next EMI: ${new Date(p.nextPaymentTime * 1000).toLocaleString()}
+//   `.trim()
+//   );
 // };

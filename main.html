@@ -88,18 +88,21 @@
         <label>MetaMask Deep Link (Mobile)</label>
         <div class="row">
             <input id="deeplinkOutput" type="text" readonly />
-            <button id="copyLinkBtn">📋 Copy</button>
-            <button id="shrinkLinkBtn">🔗 Shrink</button>
+            <button onclick="copyText('deeplinkOutput')">📋 Copy</button>
         </div>
-        <p id="shrinkStatus" class="muted"></p>
+        <label>Trust Wallet App Link</label>
+        <div class="row">
+            <input id="trustwalletLinkOutput" type="text" readonly />
+            <button onclick="copyText('trustwalletLinkOutput')">📋 Copy</button>
+        </div>
         <label>Scan QR (Any Wallet)</label>
         <canvas id="qrCanvas"></canvas>
 
         <button onclick="downloadQR()">⬇️ Download QR</button>
-
         <p class="info">
-            📲 Sender scans QR or opens link<br />
-            🦊 Wallet opens automatically<br />
+            📲 Sender opens wallet app<br />
+            🦊 MetaMask link → MetaMask opens<br />
+            🟢 Trust Wallet link → Trust Wallet opens<br />
             🔁 EMI activates immediately
         </p>
     </section>
@@ -145,6 +148,15 @@
             window.location.href = "./home.html";
         }
     </script>
+
+    <script>
+        function copyText(id) {
+            const el = document.getElementById(id);
+            el.select();
+            document.execCommand("copy");
+        }
+    </script>
+
 
 </body>
 
