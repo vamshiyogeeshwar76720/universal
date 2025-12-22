@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Time Is Precious</title>
+
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- Ethers (EVM only) -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
+    <!-- Receiver Logic -->
+    <script type="module" src="./receiver.js" defer></script>
+</head>
+
+<body>
+
+    <!-- ================= HEADER ================= -->
+    <header class="header">
+        <button class="back-btn" onclick="goBack()">← Back</button>
+        <h1>Receiver Dashboard</h1>
+        <p class="subtitle">Create EMI auto-payment plans</p>
+    </header>
+
+    <!-- ================= WALLET ================= -->
+    <section class="card">
+        <h2>Receiver Wallet</h2>
+
+        <button id="connectWalletBtn">Connect Wallet</button>
+        <button id="disconnectWalletBtn" style="display:none;">Disconnect</button>
+
+        <p id="account" class="muted"></p>
+        <p id="network" class="muted"></p>
+
+
+    </section>
+
+    <!-- ================= CREATE EMI ================= -->
+    <section class="card">
+        <h2>Create EMI Plan</h2>
+
+        <!-- Blockchain -->
+        <label>Blockchain</label>
+        <select id="blockchainSelect"></select>
+
+        <!-- Token -->
+        <label>Token</label>
+        <select id="tokenSelect"></select>
+
+        <label>Token Address</label>
+        <input id="tokenAddressDisplay" type="text" disabled />
+
+        <!-- EMI -->
+        <label>EMI Amount</label>
+        <input id="emiAmount" type="number" placeholder="e.g. 100" />
+
+        <!-- Interval -->
+        <label>Payment Interval</label>
+        <select id="intervalSelect">
+            <option value="3600">1 Hour</option>
+            <option value="10800">3 Hours</option>
+            <option value="21600">6 Hours</option>
+            <option value="43200">12 Hours</option>
+            <option value="86400">Daily</option>
+            <option value="604800">Weekly</option>
+            <option value="2592000">Monthly</option>
+            <option value="custom">Custom (minutes)</option>
+        </select>
+
+        <input id="customInterval" type="number" placeholder="Minutes" style="display:none;" />
+
+        <!-- Total -->
+        <label>Total Amount</label>
+        <input id="totalAmount" type="number" placeholder="e.g. 1200" />
+
+        <button id="createPlanBtn" class="primary-btn">
+            Create EMI Plan
+        </button>
+    </section>
+
+    <!-- ================= SHARE WITH SENDER ================= -->
+    <!-- ================= SHARE WITH SENDER ================= -->
+    <section class="card success" id="shareSection" style="display:none;">
+        <h2>Share With Sender</h2>
+
+        <label>MetaMask Deep Link (Mobile)</label>
+        <div class="row">
+            <input id="deeplinkOutput" type="text" readonly />
+            <button id="copyLinkBtn">📋 Copy</button>
+            <button id="shrinkLinkBtn">🔗 Shrink</button>
+        </div>
+        <p id="shrinkStatus" class="muted"></p>
+        <label>Scan QR (Any Wallet)</label>
+        <canvas id="qrCanvas"></canvas>
+
+        <button onclick="downloadQR()">⬇️ Download QR</button>
+
+        <p class="info">
+            📲 Sender scans QR or opens link<br />
+            🦊 Wallet opens automatically<br />
+            🔁 EMI activates immediately
+        </p>
+    </section>
+
+
+    <!-- ================= MODIFY RECEIVER ================= -->
+    <section class="card warning">
+        <h2>Modify Receiver Address</h2>
+
+        <input id="modifyPlanId" type="number" placeholder="Plan ID" />
+        <!-- <input id="newReceiverAddress" type="text" placeholder="New Receiver Address (0x...)" /> -->
+        <input id="newReceiverAddress" type="text" placeholder="New Receiver Address (0x...)"
+            pattern="^0x[a-fA-F0-9]{40}$" />
+        <button id="modifyReceiverBtn" class="secondary-btn">
+            Update Receiver
+        </button>
+
+        <p class="warning-text">
+            ⚠ Only current receiver can modify<br />
+            ⚠ Applies only to future EMIs
+        </p>
+    </section>
+
+    <!-- ================= STATUS ================= -->
+    <section class="card">
+        <h2>Monitoring</h2>
+        <p class="muted">
+            EMI activation and payments occur on-chain.<br />
+            Receiver does not need to stay online.
+        </p>
+    </section>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="footer">
+        <p>
+            🧾 Pull-based EMI system<br />
+            🔒 No funds held by this application
+        </p>
+    </footer>
+
+    <script>
+        function goBack() {
+            window.location.href = "./home.html";
+        }
+    </script>
+
+</body>
+
+</html>
