@@ -16,14 +16,14 @@ const CHAINS = {
     testnet: {
       name: "Sepolia",
       chainId: 11155111,
-      rpc: "https://rpc.ankr.com/eth_sepolia",
+      rpc: "https://sepolia.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
       emiContract: "0x76cfc6191f11950C539F3EDc27BCd5e2F377be78",
     },
 
     mainnet: {
       name: "Mainnet",
       chainId: 1,
-      rpc: "https://rpc.ankr.com/eth",
+      rpc: "",
       emiContract: "0xYourEthereumMainnetEmiContract",
     },
 
