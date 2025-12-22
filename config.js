@@ -23,7 +23,7 @@ const CHAINS = {
     mainnet: {
       name: "Mainnet",
       chainId: 1,
-      rpc: "",
+      rpc: "https://mainnet.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
       emiContract: "0xYourEthereumMainnetEmiContract",
     },
 
