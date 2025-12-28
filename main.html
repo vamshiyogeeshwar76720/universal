@@ -95,10 +95,25 @@
             <input id="trustwalletLinkOutput" type="text" readonly />
             <button onclick="copyText('trustwalletLinkOutput')">📋 Copy</button>
         </div>
-        <label>Scan QR (Any Wallet)</label>
-        <canvas id="qrCanvas"></canvas>
 
-        <button onclick="downloadQR()">⬇️ Download QR</button>
+
+        <label>Scan QR (Any Wallet)</label>
+        <div class="qr-container">
+            <div class="qr-box">
+                <h4>🦊 Scan with MetaMask</h4>
+                <canvas id="qrCanvasMetamask"></canvas>
+                <button onclick="copyQR('qrCanvasMetamask')">📋 Copy QR</button>
+            </div>
+
+            <div class="qr-box">
+                <h4>🟢 Scan with Trust Wallet</h4>
+                <canvas id="qrCanvasTrust"></canvas>
+                <button onclick="copyQR('qrCanvasTrust')">📋 Copy QR</button>
+            </div>
+        </div>
+
+
+
         <p class="info">
             📲 Sender opens wallet app<br />
             🦊 MetaMask link → MetaMask opens<br />
@@ -156,6 +171,26 @@
             document.execCommand("copy");
         }
     </script>
+
+    <script>
+        async function copyQR(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return alert("QR not found");
+
+            canvas.toBlob(async (blob) => {
+                try {
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ "image/png": blob })
+                    ]);
+                    alert("✅ QR copied to clipboard");
+                } catch (err) {
+                    console.error(err);
+                    alert("❌ Clipboard copy not supported on this browser");
+                }
+            });
+        }
+    </script>
+
 
 
 </body>

@@ -8,16 +8,16 @@ import { contractABI } from "./abi.js";
 const CONTRACTS = {
   sepolia: {
     chainId: 11155111,
-    emi: "0x76cfc6191f11950C539F3EDc27BCd5e2F377be78",
+    emi: "0x8A03d44262707E8053af99fB57032F0B25661E3e",
     // usdt: "0x9d9832cBF3D2c5e4a59295f199E4fBF42CBA468b",
   },
 
   // ready for production
-  // mainnet: {
-  //   chainId: 1,
-  //   emi: "0xMAINNET_EMI_CONTRACT",
-  //   usdt: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-  // },
+  mainnet: {
+    chainId: 1,
+    emi: "0xMAINNET_EMI_CONTRACT",
+    usdt: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+  },
 };
 
 const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3";

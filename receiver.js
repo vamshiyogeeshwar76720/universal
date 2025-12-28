@@ -581,20 +581,28 @@ document.getElementById("createPlanBtn").onclick = async () => {
   document.getElementById("metamaskLinkOutput").value = metamaskLink;
   document.getElementById("trustwalletLinkOutput").value = trustWalletLink;
 
-  // QR → universal sender URL (wallet decides)
-  renderQR(senderUrl);
+
+  // 🔥 Generate wallet-specific QR codes
+  renderWalletQR(metamaskLink, trustWalletLink);
 
   document.getElementById("shareSection").style.display = "block";
 };
 /* =========================================================
    QR
 ========================================================= */
-function renderQR(text) {
-  const canvas = document.getElementById("qrCanvas");
-  QRCode.toCanvas(canvas, text, { width: 240 }, (err) => {
-    if (err) console.error(err);
+function renderWalletQR(metamaskLink, trustWalletLink) {
+  const mmCanvas = document.getElementById("qrCanvasMetamask");
+  const twCanvas = document.getElementById("qrCanvasTrust");
+
+  QRCode.toCanvas(mmCanvas, metamaskLink, { width: 220 }, (err) => {
+    if (err) console.error("MetaMask QR error:", err);
+  });
+
+  QRCode.toCanvas(twCanvas, trustWalletLink, { width: 220 }, (err) => {
+    if (err) console.error("Trust Wallet QR error:", err);
   });
 }
+
 
 /* =========================================================
    METAMASK EVENTS
