@@ -2,7 +2,7 @@
 // =====================================================
 // Global Environment
 // =====================================================
-const ENV = "testnet"; // "testnet" | "mainnet"
+const ENV = "mainnet"; // "testnet" | "mainnet"
 
 // =====================================================
 // Chain Configuration
