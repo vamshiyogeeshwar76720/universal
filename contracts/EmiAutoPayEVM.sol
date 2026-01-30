@@ -68,7 +68,7 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
     event EmiPaid(uint256 indexed planId, uint256 amount);
     event EmiCompleted(uint256 indexed planId);
 
-/* 🔥 NEW EVENT */
+    /* 🔥 NEW EVENT */
     event ReceiverUpdated(
         uint256 indexed planId,
         address indexed oldReceiver,
@@ -99,16 +99,11 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         emit PlanCreated(planCount);
     }
 
-
-    
     /*//////////////////////////////////////////////////////////////
         🔁 NEW — UPDATE RECEIVER (ACTIVE PLANS ONLY)
     //////////////////////////////////////////////////////////////*/
 
-    function updateReceiver(
-        uint256 planId,
-        address newReceiver
-    ) external {
+    function updateReceiver(uint256 planId, address newReceiver) external {
         Plan storage p = plans[planId];
 
         require(p.active, "Plan not active");
@@ -182,6 +177,7 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         override
         returns (bool upkeepNeeded, bytes memory performData)
     {
+        if (planCount == 0) return (false, "");
         for (uint256 i = 1; i <= planCount; i++) {
             Plan storage p = plans[i];
             if (p.active && p.paid < p.total && block.timestamp >= p.nextPay) {
@@ -192,8 +188,12 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
     }
 
     function performUpkeep(bytes calldata data) external override nonReentrant {
+        if (data.length == 0) return;
         uint256 planId = abi.decode(data, (uint256));
+        if (planId == 0) return;
         Plan storage p = plans[planId];
+        if (!p.active) return;
+
         require(p.active, "Inactive");
         IPermit2(PERMIT2).transferFrom(
             p.sender,

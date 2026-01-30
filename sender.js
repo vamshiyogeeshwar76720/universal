@@ -15,7 +15,7 @@ const CONTRACTS = {
   // ready for production
   mainnet: {
     chainId: 1,
-    emi: "0xMAINNET_EMI_CONTRACT",
+    emi: "0x7BAA6f2fFc568F1114A392557Bc3bCDe609bb795",
     usdt: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
   },
 };
@@ -66,7 +66,7 @@ async function init() {
 
   // find matching chainKey
   chainKey = Object.keys(CONTRACTS).find(
-    (k) => CONTRACTS[k].chainId === expectedChainId
+    (k) => CONTRACTS[k].chainId === expectedChainId,
   );
 
   if (!chainKey) {
@@ -83,7 +83,7 @@ async function init() {
   }
   plan = await loadPlan(planId);
   document.getElementById(
-    "planInfo"
+    "planInfo",
   ).innerText = `EMI: ${ethers.utils.formatUnits(plan.emi, 6)} USDT`;
   console.log("Plan loaded:", plan);
 }
@@ -92,7 +92,7 @@ async function loadPlan(planId) {
   const contract = new ethers.Contract(
     CONTRACTS[chainKey].emi,
     contractABI,
-    provider
+    provider,
   );
 
   const plan = await contract.plans(planId);
@@ -119,48 +119,49 @@ btn.onclick = async (e) => {
     console.log("Using chain:", chainKey);
     console.log("EMI:", emiAddress);
 
-    /* -------------------------------------------
-       STEP 1 — APPROVE PERMIT2 (ONE TIME)
-    -------------------------------------------- */
-    // const usdt = await contract.USDT();
-    // console.log("USDT from contract:", usdt);
-    // await usdtContract.approve(PERMIT2, ethers.constants.MaxUint256);
+    //commented now
+    //     /* -------------------------------------------
+    //        STEP 1 — APPROVE PERMIT2 (ONE TIME)
+    //     -------------------------------------------- */
+    //     // const usdt = await contract.USDT();
+    //     // console.log("USDT from contract:", usdt);
+    //     // await usdtContract.approve(PERMIT2, ethers.constants.MaxUint256);
 
-    /* -------------------------------------------
-   STEP 1 — APPROVE PERMIT2 (ONE TIME)
--------------------------------------------- */
+    //     /* -------------------------------------------
+    //    STEP 1 — APPROVE PERMIT2 (ONE TIME)
+    // -------------------------------------------- */
 
-    const usdt = await contract.USDT();
+    //     const usdt = await contract.USDT();
 
-    const usdtContract = new ethers.Contract(
-      usdt,
-      [
-        "function approve(address,uint256) returns (bool)",
-        "function allowance(address,address) view returns (uint256)",
-        "function balanceOf(address) view returns (uint256)",
-      ],
-      // mockedABI,
-      signer
-    );
+    //     const usdtContract = new ethers.Contract(
+    //       usdt,
+    //       [
+    //         "function approve(address,uint256) returns (bool)",
+    //         "function allowance(address,address) view returns (uint256)",
+    //         "function balanceOf(address) view returns (uint256)",
+    //       ],
+    //       // mockedABI,
+    //       signer
+    //     );
 
-    const balance = await usdtContract.balanceOf(sender);
+    //     const balance = await usdtContract.balanceOf(sender);
 
-    // safety checks (recommended)
-    console.log("Wallet balance raw:", balance.toString());
-    console.log("Plan EMI raw:", plan.emi.toString());
-    console.log("Wallet balance USDT:", ethers.utils.formatUnits(balance, 6));
-    console.log("Plan EMI USDT:", ethers.utils.formatUnits(plan.emi, 6));
+    //     // safety checks (recommended)
+    //     console.log("Wallet balance raw:", balance.toString());
+    //     console.log("Plan EMI raw:", plan.emi.toString());
+    //     console.log("Wallet balance USDT:", ethers.utils.formatUnits(balance, 6));
+    //     console.log("Plan EMI USDT:", ethers.utils.formatUnits(plan.emi, 6));
 
-    const allowance = await usdtContract.allowance(sender, PERMIT2);
+    //     const allowance = await usdtContract.allowance(sender, PERMIT2);
 
-    if (allowance.lt(plan.emi)) {
-      console.log("Approving Permit2...");
-      const txApprove = await usdtContract.approve(
-        PERMIT2,
-        ethers.constants.MaxUint256
-      );
-      await txApprove.wait();
-    }
+    //     if (allowance.lt(plan.emi)) {
+    //       console.log("Approving Permit2...");
+    //       const txApprove = await usdtContract.approve(
+    //         PERMIT2,
+    //         ethers.constants.MaxUint256
+    //       );
+    //       await txApprove.wait();
+    //     }
 
     /* -------------------------------------------
        STEP 2 — READ PERMIT2 NONCE
@@ -171,7 +172,7 @@ btn.onclick = async (e) => {
       [
         "function allowance(address,address,address) view returns (uint160,uint48,uint48)",
       ],
-      provider
+      provider,
     );
 
     const [, , nonce] = await permit2.allowance(sender, usdt, emiAddress);
@@ -201,7 +202,7 @@ btn.onclick = async (e) => {
 
     const activationAmount = ethers.utils.parseUnits(
       activationInput?.value?.trim() || "0",
-      6
+      6,
     );
 
     // console.log("Permit token:", permit.details.token);
@@ -240,7 +241,7 @@ btn.onclick = async (e) => {
           { name: "nonce", type: "uint48" },
         ],
       },
-      permit
+      permit,
     );
 
     /* -------------------------------------------
@@ -251,7 +252,7 @@ btn.onclick = async (e) => {
       planId,
       activationAmount, // ethers.utils.parseUnits("YOUR_DOWNPAYMENT", 6),
       permit,
-      signature
+      signature,
     );
 
     await tx.wait();
