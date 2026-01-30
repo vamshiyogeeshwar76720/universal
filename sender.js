@@ -174,7 +174,7 @@ btn.onclick = async (e) => {
       ],
       provider,
     );
-
+    const usdt = CONTRACTS[chainKey].usdt || (await contract.USDT());
     const [, , nonce] = await permit2.allowance(sender, usdt, emiAddress);
 
     /* -------------------------------------------
