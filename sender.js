@@ -5,7 +5,7 @@ import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 const NETWORK_CONFIG = {
   sepolia: {
     chainId: 11155111,
-    emiContract: "0x4BB8Aa2908De544081Bf2F9Ca69cB7447C4A7C82",
+    emiContract: "0x0955125fe05Bf65E642EB95a1704806Dcb79CACb",
   },
 };
 
@@ -15,7 +15,9 @@ const ETH_ABI = [
   "function planCount() view returns (uint256)",
 ];
 
-const urlParams = Object.fromEntries(new URLSearchParams(window.location.search));
+const urlParams = Object.fromEntries(
+  new URLSearchParams(window.location.search),
+);
 const planId = urlParams.planId;
 const chainIdParam = urlParams.chainId;
 
@@ -31,14 +33,18 @@ let isConnected = false;
 async function detectWallet() {
   const statusEl = document.getElementById("status");
   statusEl.innerText = "🔄 Waiting for wallet...";
-  
+
   // Try multiple wallet providers
-  const providers = ['ethereum', 'webkitEthereum', 'trustwallet'];
-  
-  for (let i = 0; i < 30; i++) { // 15 seconds max
+  const providers = ["ethereum", "webkitEthereum", "trustwallet"];
+
+  for (let i = 0; i < 30; i++) {
+    // 15 seconds max
     for (const providerName of providers) {
       if (window[providerName]) {
-        provider = new ethers.providers.Web3Provider(window[providerName], "any");
+        provider = new ethers.providers.Web3Provider(
+          window[providerName],
+          "any",
+        );
         try {
           await provider.send("eth_requestAccounts", []);
           signer = provider.getSigner();
@@ -50,9 +56,9 @@ async function detectWallet() {
         }
       }
     }
-    await new Promise(r => setTimeout(r, 500)); // Poll every 500ms
+    await new Promise((r) => setTimeout(r, 500)); // Poll every 500ms
   }
-  
+
   statusEl.innerText = "❌ No wallet detected. Please refresh.";
   return false;
 }
@@ -64,7 +70,7 @@ async function init() {
     connectBtn.onclick = async () => {
       connectBtn.disabled = true;
       connectBtn.innerText = "⏳ Connecting...";
-      
+
       const hasWallet = await detectWallet();
       if (!hasWallet) {
         alert("No wallet found. Please install MetaMask or Trust Wallet.");
@@ -86,7 +92,7 @@ async function init() {
 async function switchNetwork() {
   const config = NETWORK_CONFIG.sepolia;
   const currentChain = await provider.getNetwork();
-  
+
   if (currentChain.chainId !== config.chainId) {
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
@@ -98,10 +104,10 @@ async function switchNetwork() {
 async function loadPlan() {
   const config = NETWORK_CONFIG.sepolia;
   contract = new ethers.Contract(config.emiContract, ETH_ABI, signer);
-  
+
   const planIdBN = ethers.BigNumber.from(planId);
   plan = await contract.plans(planIdBN);
-  
+
   console.table({
     planId,
     emi: ethers.utils.formatEther(plan.emi),
@@ -126,7 +132,7 @@ function showPlan(plan) {
     ✅ <strong>ETH Plan #${planId}</strong><br>
     💰 EMI: ${ethers.utils.formatEther(plan.emi)} ETH<br>
     💎 Total: ${ethers.utils.formatEther(plan.total)} ETH<br>
-    👤 Receiver: ${plan.receiver.slice(0,6)}...${plan.receiver.slice(-4)}<br>
+    👤 Receiver: ${plan.receiver.slice(0, 6)}...${plan.receiver.slice(-4)}<br>
     <small style="color:#059669">✓ Ready for ETH payment ✓</small>
   `;
 }
@@ -170,7 +176,10 @@ function showSuccess(txHash) {
       <h1>ETH EMI ACTIVATED!</h1>
       <p><strong>Plan #${planId}</strong> is LIVE 🚀</p>
       <p style="word-break:break-all;">
-        Tx: <a href="https://sepolia.etherscan.io/tx/${txHash}" target="_blank">${txHash.slice(0,12)}...</a>
+        Tx: <a href="https://sepolia.etherscan.io/tx/${txHash}" target="_blank">${txHash.slice(
+    0,
+    12,
+  )}...</a>
       </p>
       <button onclick="window.close()" class="success" style="padding:15px 30px;">Close</button>
     </div>
@@ -179,8 +188,6 @@ function showSuccess(txHash) {
 
 // 🔥 START ON LOAD
 window.addEventListener("load", init);
-
-
 
 //raw bytes code without IERC20+permit2
 // 🔥 FINAL FIXED sender.js - EMI STARTS SUCCESSFULLY!

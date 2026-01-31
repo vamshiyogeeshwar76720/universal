@@ -1,6 +1,5 @@
 //code with raw bytes - direct address payment
 // SPDX-License-Identifier: MIT
-// 🔥 COMPLETE FIXED VERSION - REPLACE ENTIRE CONTRACT
 pragma solidity ^0.8.19;
 
 import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
@@ -16,20 +15,33 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         uint256 paid;
         uint256 nextPay;
         bool active;
+        bool paymentReceived; // 🔥 NEW: Track initial payment
     }
 
     uint256 public planCount;
     mapping(uint256 => Plan) public plans;
-
-    // 🔥 FIXED: Contract receives payments → forwards to receiver
     mapping(address => uint256) public pendingPlanId; // Receiver → PlanId
-    mapping(address => bool) public linkedReceivers;
+    address public admin; // Off-chain monitor
 
     event PlanCreated(uint256 indexed planId);
     event PlanActivated(uint256 indexed planId, address indexed sender);
     event EmiPaid(uint256 indexed planId, uint256 amount);
     event EmiCompleted(uint256 indexed planId);
     event PlanLinked(uint256 indexed planId, address indexed receiver);
+    event PaymentReceived(
+        uint256 indexed planId,
+        address indexed sender,
+        uint256 amount
+    );
+
+    constructor() {
+        admin = msg.sender;
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Only admin");
+        _;
+    }
 
     function createPlan(uint256 emi, uint256 interval, uint256 total) external {
         require(emi > 0, "Invalid EMI");
@@ -45,11 +57,13 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
             total: total,
             paid: 0,
             nextPay: 0,
-            active: false
+            active: false,
+            paymentReceived: false
         });
         emit PlanCreated(planCount);
     }
 
+    // 🔥 LINK: Receiver links their WALLET for monitoring
     function linkPlanToDirectPayment(uint256 planId) external {
         require(planId > 0 && planId <= planCount, "Invalid plan ID");
         Plan storage p = plans[planId];
@@ -57,16 +71,27 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         require(!p.active, "Plan already active");
 
         pendingPlanId[msg.sender] = planId;
-        linkedReceivers[msg.sender] = true;
         emit PlanLinked(planId, msg.sender);
     }
 
-    function unlinkPlan() external {
-        delete pendingPlanId[msg.sender];
-        linkedReceivers[msg.sender] = false;
+    // 🔥 OFF-CHAIN MONITOR: Activate when payment detected
+    function activatePlanRaw(
+        uint256 planId,
+        address sender
+    ) external onlyAdmin {
+        Plan storage p = plans[planId];
+        require(pendingPlanId[p.receiver] == planId, "Plan not linked");
+        require(!p.active, "Already active");
+        require(!p.paymentReceived, "Payment already received");
+
+        p.sender = payable(sender);
+        p.paymentReceived = true;
+        p.active = true;
+        p.nextPay = block.timestamp + p.interval;
+        emit PlanActivated(planId, sender);
     }
 
-    // 🔥 FIXED: Sender activates via QR (to contract)
+    // Manual activation (QR code method - unchanged)
     function activatePlan(uint256 planId) external payable nonReentrant {
         Plan storage p = plans[planId];
         require(p.receiver != address(0), "Invalid plan");
@@ -75,8 +100,6 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
 
         p.sender = payable(msg.sender);
         p.paid += msg.value;
-
-        // Forward ETH to receiver
         p.receiver.transfer(msg.value);
         emit EmiPaid(planId, msg.value);
 
@@ -85,40 +108,6 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         emit PlanActivated(planId, msg.sender);
     }
 
-    // 🔥 FIXED receive(): Contract receives ETH → Auto-activates linked plan
-    receive() external payable nonReentrant {
-        // Check if this is a direct payment for linked receiver
-        if (msg.value >= 0.001 ether) {
-            // Min sensible amount
-            // Find receiver with pending plan who linked THIS CONTRACT
-            // Note: Sender sends to CONTRACT address (shown in UI)
-            for (uint256 i = 1; i <= planCount; i++) {
-                Plan storage p = plans[i];
-                if (
-                    !p.active &&
-                    pendingPlanId[p.receiver] == i &&
-                    linkedReceivers[p.receiver] &&
-                    msg.value >= p.emi
-                ) {
-                    // AUTO-ACTIVATE! ✨
-                    p.sender = payable(msg.sender);
-                    p.paid += msg.value;
-
-                    // Forward to receiver
-                    p.receiver.transfer(msg.value);
-
-                    p.active = true;
-                    p.nextPay = block.timestamp + p.interval;
-
-                    emit PlanActivated(i, msg.sender);
-                    emit EmiPaid(i, msg.value);
-                    return; // First match
-                }
-            }
-        }
-    }
-
-    // Chainlink automation (unchanged)
     function checkUpkeep(
         bytes calldata
     )
@@ -154,6 +143,12 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
             p.nextPay = block.timestamp + p.interval;
             emit EmiPaid(planId, p.emi);
         }
+    }
+
+    // Admin functions
+    function setAdmin(address newAdmin) external {
+        require(msg.sender == admin, "Only admin");
+        admin = newAdmin;
     }
 }
 
