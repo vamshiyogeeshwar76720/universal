@@ -221,8 +221,8 @@
       "artifacts": []
     },
     "F:\\universal new func\\universal\\contracts\\EmiAutoPayEVM.sol": {
-      "lastModificationDate": 1767475613773,
-      "contentHash": "c130165bb4550eedb541bfb30df0d4af",
+      "lastModificationDate": 1769840505402,
+      "contentHash": "5f169c1688fe5169f1fb272e6079835a",
       "sourceName": "contracts/EmiAutoPayEVM.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -249,7 +249,6 @@
         }
       },
       "imports": [
-        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
         "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol",
         "@openzeppelin/contracts/security/ReentrancyGuard.sol"
       ],
@@ -257,8 +256,7 @@
         "^0.8.19"
       ],
       "artifacts": [
-        "EmiAutoPayEVM",
-        "IPermit2"
+        "EmiAutoPayRaw"
       ]
     },
     "F:\\universal new func\\universal\\node_modules\\@openzeppelin\\contracts\\security\\ReentrancyGuard.sol": {

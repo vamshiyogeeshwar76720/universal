@@ -75,44 +75,6 @@ export const contractABI = [
     type: "event",
   },
   {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "uint256",
-        name: "planId",
-        type: "uint256",
-      },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "oldReceiver",
-        type: "address",
-      },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "newReceiver",
-        type: "address",
-      },
-    ],
-    name: "ReceiverUpdated",
-    type: "event",
-  },
-  {
-    inputs: [],
-    name: "PERMIT2",
-    outputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [],
     name: "USDT",
     outputs: [
@@ -133,61 +95,12 @@ export const contractABI = [
         type: "uint256",
       },
       {
-        internalType: "uint160",
+        internalType: "uint256",
         name: "activationAmount",
-        type: "uint160",
-      },
-      {
-        components: [
-          {
-            components: [
-              {
-                internalType: "address",
-                name: "token",
-                type: "address",
-              },
-              {
-                internalType: "uint160",
-                name: "amount",
-                type: "uint160",
-              },
-              {
-                internalType: "uint48",
-                name: "expiration",
-                type: "uint48",
-              },
-              {
-                internalType: "uint48",
-                name: "nonce",
-                type: "uint48",
-              },
-            ],
-            internalType: "struct PermitDetails",
-            name: "details",
-            type: "tuple",
-          },
-          {
-            internalType: "address",
-            name: "spender",
-            type: "address",
-          },
-          {
-            internalType: "uint256",
-            name: "sigDeadline",
-            type: "uint256",
-          },
-        ],
-        internalType: "struct PermitSingle",
-        name: "permit",
-        type: "tuple",
-      },
-      {
-        internalType: "bytes",
-        name: "signature",
-        type: "bytes",
+        type: "uint256",
       },
     ],
-    name: "activatePlanWithPermit2AndPay",
+    name: "activatePlan",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -317,24 +230,6 @@ export const contractABI = [
       },
     ],
     stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "planId",
-        type: "uint256",
-      },
-      {
-        internalType: "address",
-        name: "newReceiver",
-        type: "address",
-      },
-    ],
-    name: "updateReceiver",
-    outputs: [],
-    stateMutability: "nonpayable",
     type: "function",
   },
 ];

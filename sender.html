@@ -1,4 +1,26 @@
+<!-- raw bytes code without IERC20+permit2 -->
 <!DOCTYPE html>
+<html>
+
+<head>
+    <title>Pay EMI (Raw Bytes)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+</head>
+
+<body>
+    <h2>EMI Auto-Pay (Raw Bytes Edition 🚀)</h2>
+    <p id="planInfo">Loading...</p>
+    <input type="number" id="activationAmount" placeholder="Down Payment USDT (optional)" step="0.000001">
+    <!-- Button 1 auto-created by JS -->
+    <button id="payBtn" disabled>2️⃣ START EMI (Approve First)</button>
+    <script type="module" src="./sender.js" defer></script>
+</body>
+
+</html>
+<!-- IERC20 + permit2 code -->
+<!-- <!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -32,4 +54,4 @@
     <script type="module" src="./sender.js" defer></script>
 </body>
 
-</html>
+</html> -->
