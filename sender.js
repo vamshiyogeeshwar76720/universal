@@ -1,10 +1,11 @@
 // 🔥 1-CLICK ETH EMI Activation
+// 🔥 MOBILE-WALLET PROOF sender.js - No White Screen!
 import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
 const NETWORK_CONFIG = {
   sepolia: {
     chainId: 11155111,
-    emiContract: "0xEb0D024185187f1f7e6daBd6a293157D6318cf5E", // Update after deploy
+    emiContract: "0xEb0D024185187f1f7e6daBd6a293157D6318cf5E",
   },
 };
 
@@ -14,37 +15,93 @@ const ETH_ABI = [
   "function planCount() view returns (uint256)",
 ];
 
-const { planId } = Object.fromEntries(
-  new URLSearchParams(window.location.search),
-);
-let provider, signer, contract, plan;
+const urlParams = Object.fromEntries(new URLSearchParams(window.location.search));
+const planId = urlParams.planId;
+const chainIdParam = urlParams.chainId;
 
-async function init() {
-  document.getElementById("planInfo").textContent = "🔄 Connecting wallet...";
-
-  provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
-
-  const config = NETWORK_CONFIG.sepolia;
-  contract = new ethers.Contract(config.emiContract, ETH_ABI, signer);
-
-  if ((await provider.getNetwork()).chainId !== config.chainId) {
-    await window.ethereum.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: "0xaa36a" }],
-    });
-  }
-
-  plan = await validatePlan(planId);
-  showPlan(plan);
-  createETHButton();
+if (!planId) {
+  document.getElementById("status").innerText = "❌ Invalid Plan ID";
+  throw new Error("No planId in URL");
 }
 
-async function validatePlan(planId) {
-  const planIdBN = ethers.BigNumber.from(planId);
-  const plan = await contract.plans(planIdBN);
+let provider, signer, contract, plan;
+let isConnected = false;
 
+// 🔥 MOBILE WALLET POLLING (Fixes white screen)
+async function detectWallet() {
+  const statusEl = document.getElementById("status");
+  statusEl.innerText = "🔄 Waiting for wallet...";
+  
+  // Try multiple wallet providers
+  const providers = ['ethereum', 'webkitEthereum', 'trustwallet'];
+  
+  for (let i = 0; i < 30; i++) { // 15 seconds max
+    for (const providerName of providers) {
+      if (window[providerName]) {
+        provider = new ethers.providers.Web3Provider(window[providerName], "any");
+        try {
+          await provider.send("eth_requestAccounts", []);
+          signer = provider.getSigner();
+          isConnected = true;
+          statusEl.innerText = "✅ Wallet connected!";
+          return true;
+        } catch (e) {
+          console.log("Provider ready, but no accounts:", providerName);
+        }
+      }
+    }
+    await new Promise(r => setTimeout(r, 500)); // Poll every 500ms
+  }
+  
+  statusEl.innerText = "❌ No wallet detected. Please refresh.";
+  return false;
+}
+
+// 🔥 STEP-BY-STEP INIT
+async function init() {
+  try {
+    const connectBtn = document.getElementById("connectBtn");
+    connectBtn.onclick = async () => {
+      connectBtn.disabled = true;
+      connectBtn.innerText = "⏳ Connecting...";
+      
+      const hasWallet = await detectWallet();
+      if (!hasWallet) {
+        alert("No wallet found. Please install MetaMask or Trust Wallet.");
+        connectBtn.disabled = false;
+        connectBtn.innerText = "🔗 Connect Wallet";
+        return;
+      }
+
+      await switchNetwork();
+      await loadPlan();
+      connectBtn.style.display = "none";
+    };
+  } catch (error) {
+    console.error("Init failed:", error);
+    document.getElementById("status").innerText = "❌ Setup failed";
+  }
+}
+
+async function switchNetwork() {
+  const config = NETWORK_CONFIG.sepolia;
+  const currentChain = await provider.getNetwork();
+  
+  if (currentChain.chainId !== config.chainId) {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: `0xaa36a` }], // Sepolia
+    });
+  }
+}
+
+async function loadPlan() {
+  const config = NETWORK_CONFIG.sepolia;
+  contract = new ethers.Contract(config.emiContract, ETH_ABI, signer);
+  
+  const planIdBN = ethers.BigNumber.from(planId);
+  plan = await contract.plans(planIdBN);
+  
   console.table({
     planId,
     emi: ethers.utils.formatEther(plan.emi),
@@ -53,11 +110,15 @@ async function validatePlan(planId) {
     active: plan.active,
   });
 
-  if (plan.receiver === ethers.constants.AddressZero)
+  if (plan.receiver === ethers.constants.AddressZero) {
     throw new Error("❌ Plan doesn't exist");
-  if (plan.active) throw new Error("❌ Already active");
+  }
+  if (plan.active) {
+    throw new Error("❌ Plan already active");
+  }
 
-  return plan;
+  showPlan(plan);
+  createETHButton();
 }
 
 function showPlan(plan) {
@@ -65,7 +126,7 @@ function showPlan(plan) {
     ✅ <strong>ETH Plan #${planId}</strong><br>
     💰 EMI: ${ethers.utils.formatEther(plan.emi)} ETH<br>
     💎 Total: ${ethers.utils.formatEther(plan.total)} ETH<br>
-    👤 Receiver: ${plan.receiver.slice(0, 6)}...${plan.receiver.slice(-4)}<br>
+    👤 Receiver: ${plan.receiver.slice(0,6)}...${plan.receiver.slice(-4)}<br>
     <small style="color:#059669">✓ Ready for ETH payment ✓</small>
   `;
 }
@@ -75,7 +136,7 @@ function createETHButton() {
   btn.innerText = `🚀 ACTIVATE (${ethers.utils.formatEther(plan.emi)} ETH)`;
   btn.className = "primary";
   btn.onclick = activateETHPlan;
-  document.body.appendChild(btn);
+  document.getElementById("planInfo").appendChild(btn);
 }
 
 async function activateETHPlan() {
@@ -85,7 +146,7 @@ async function activateETHPlan() {
 
   try {
     const tx = await contract.activatePlan(ethers.BigNumber.from(planId), {
-      value: plan.emi, // Send exact EMI amount
+      value: plan.emi,
       gasLimit: 300000,
     });
 
@@ -95,7 +156,8 @@ async function activateETHPlan() {
     showSuccess(receipt.transactionHash);
   } catch (error) {
     console.error("ETH payment failed:", error);
-    alert("Failed: " + (error.reason || error.message));
+    const errorMsg = error.reason || error.message || "Transaction failed";
+    alert("❌ " + errorMsg);
     btn.disabled = false;
     btn.innerText = `🚀 ACTIVATE (${ethers.utils.formatEther(plan.emi)} ETH)`;
   }
@@ -103,21 +165,20 @@ async function activateETHPlan() {
 
 function showSuccess(txHash) {
   document.body.innerHTML = `
-    <div style="text-align:center; padding:60px;">
+    <div style="text-align:center; padding:60px; max-width:400px; margin:auto;">
       <div style="font-size:100px; color:#10b981;">✅</div>
       <h1>ETH EMI ACTIVATED!</h1>
       <p><strong>Plan #${planId}</strong> is LIVE 🚀</p>
-      <p>Tx: <a href="https://sepolia.etherscan.io/tx/${txHash}" target="_blank">${txHash.slice(
-    0,
-    12,
-  )}...</a></p>
+      <p style="word-break:break-all;">
+        Tx: <a href="https://sepolia.etherscan.io/tx/${txHash}" target="_blank">${txHash.slice(0,12)}...</a>
+      </p>
       <button onclick="window.close()" class="success" style="padding:15px 30px;">Close</button>
     </div>
   `;
 }
 
+// 🔥 START ON LOAD
 window.addEventListener("load", init);
-
 
 
   
