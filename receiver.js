@@ -140,9 +140,6 @@ function getNetworkLabel(chainId) {
   return config ? config.name : `Unknown (${chainId})`;
 }
 
-
-
-
 /* =========================================================
    INTERVAL HANDLING
 ========================================================= */
@@ -251,22 +248,47 @@ document.getElementById("createPlanBtn").onclick = async () => {
 
     // 🔥 ETH Sender Links
     const chainId = NETWORK_CONFIG[chainKey].chainId;
+    // 🔥 PROPER DEEP LINKS (Opens Correct App!)
     const senderUrl = `${window.location.origin}/sender.html?planId=${planId}&chainId=${chainId}`;
 
-    document.getElementById("metamaskLinkOutput").value = senderUrl;
-    document.getElementById("trustwalletLinkOutput").value = senderUrl;
+    // 1️⃣ METAMASK DEEP LINK (metamask:// + fallback)
+    const metamaskDeepLink = `metamask://dapp/${encodeURIComponent(senderUrl)}`;
+    const metamaskFallback = `https://metamask.app.link/dapp/${encodeURIComponent(
+      senderUrl,
+    )}`;
 
-    QRCode.toCanvas(document.getElementById("qrCanvasMetamask"), senderUrl, {
-      width: 220,
-    });
-    QRCode.toCanvas(document.getElementById("qrCanvasTrust"), senderUrl, {
-      width: 220,
-    });
+    // 2️⃣ TRUST WALLET DEEP LINK (tw://)
+    const trustWalletDeepLink = `tw://open_url?url=${encodeURIComponent(
+      senderUrl,
+    )}`;
+
+    // 3️⃣ UNIVERSAL QR (All Wallets)
+    const universalQR = senderUrl;
+
+    // 🎯 SET LINKS
+    document.getElementById("metamaskLinkOutput").value = metamaskDeepLink;
+    document.getElementById("trustwalletLinkOutput").value =
+      trustWalletDeepLink;
+
+    // 🎨 GENERATE PROPER QR CODES
+    QRCode.toCanvas(
+      document.getElementById("qrCanvasMetamask"),
+      metamaskDeepLink,
+      { width: 220 },
+    );
+    QRCode.toCanvas(
+      document.getElementById("qrCanvasTrust"),
+      trustWalletDeepLink,
+      { width: 220 },
+    );
 
     document.getElementById("shareSection").style.display = "block";
 
     alert(
-      `✅ ETH Plan #${planId} created!\n💰 EMI: ${emiInput} ETH\n💎 Total: ${totalInput} ETH\nShare with sender!`,
+      `✅ ETH Plan #${planId} created!\n` +
+        `💰 EMI: ${emiInput} ETH\n💎 Total: ${totalInput} ETH\n` +
+        `📱 MetaMask: ${metamaskDeepLink.slice(0, 50)}...\n` +
+        `🟢 Trust: ${trustWalletDeepLink.slice(0, 50)}...`,
     );
 
     btn.disabled = false;
@@ -277,6 +299,7 @@ document.getElementById("createPlanBtn").onclick = async () => {
     document.getElementById("createPlanBtn").innerText = "Create ETH EMI Plan";
   }
 };
+
 // [REST OF CODE UNCHANGED - Remove token-related UI logic]
 
 // ========================================================= */
@@ -294,7 +317,6 @@ Object.entries(NETWORK_CONFIG).forEach(([key, config]) => {
   opt.textContent = config.name;
   blockchainSelect.appendChild(opt);
 });
-
 
 //raw bytes code without IERC20+permit2
 // Raw Bytes Multi-Token Receiver - FULLY FUNCTIONAL
