@@ -5,7 +5,7 @@ import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 const NETWORK_CONFIG = {
   sepolia: {
     chainId: 11155111,
-    emiContract: "0xEb0D024185187f1f7e6daBd6a293157D6318cf5E",
+    emiContract: "0x4BB8Aa2908De544081Bf2F9Ca69cB7447C4A7C82",
   },
 };
 
@@ -181,7 +181,7 @@ function showSuccess(txHash) {
 window.addEventListener("load", init);
 
 
-  
+
 //raw bytes code without IERC20+permit2
 // 🔥 FINAL FIXED sender.js - EMI STARTS SUCCESSFULLY!
 // 🔥 PRODUCTION sender.js - 100% Working EMI Activation
