@@ -1,16 +1,5 @@
 export const contractABI = [
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "_usdt",
-        type: "address",
-      },
-    ],
-    stateMutability: "nonpayable",
-    type: "constructor",
-  },
-  {
     anonymous: false,
     inputs: [
       {
@@ -75,34 +64,16 @@ export const contractABI = [
     type: "event",
   },
   {
-    inputs: [],
-    name: "USDT",
-    outputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [
       {
         internalType: "uint256",
         name: "planId",
         type: "uint256",
       },
-      {
-        internalType: "uint256",
-        name: "activationAmount",
-        type: "uint256",
-      },
     ],
     name: "activatePlan",
     outputs: [],
-    stateMutability: "nonpayable",
+    stateMutability: "payable",
     type: "function",
   },
   {
@@ -189,12 +160,12 @@ export const contractABI = [
     name: "plans",
     outputs: [
       {
-        internalType: "address",
+        internalType: "address payable",
         name: "sender",
         type: "address",
       },
       {
-        internalType: "address",
+        internalType: "address payable",
         name: "receiver",
         type: "address",
       },
@@ -231,5 +202,9 @@ export const contractABI = [
     ],
     stateMutability: "view",
     type: "function",
+  },
+  {
+    stateMutability: "payable",
+    type: "receive",
   },
 ];

@@ -1,26 +1,17 @@
-//raw bytes code without IERC20+permit2 
-//EmiAutoPayRaw.sol - NO IERC20, NO Permit2
-// SPDX-License-Identifier: MIT
+// 🔥 ETH-ONLY EMI AutoPay (Raw Bytes Compatible)
 pragma solidity ^0.8.19;
 
 import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract EmiAutoPayRaw is AutomationCompatibleInterface, ReentrancyGuard {
-    address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7; // Mainnet USDT
-
-    constructor(address _usdt) {
-        require(_usdt != address(0), "Invalid USDT");
-        // USDT hardcoded for raw bytes demo
-    }
-
+contract EmiAutoPayETH is AutomationCompatibleInterface, ReentrancyGuard {
     struct Plan {
-        address sender;
-        address receiver;
-        uint256 emi;
+        address payable sender;
+        address payable receiver;
+        uint256 emi; // ETH amount (wei)
         uint256 interval;
-        uint256 total;
-        uint256 paid;
+        uint256 total; // Total ETH obligation
+        uint256 paid; // ETH paid so far
         uint256 nextPay;
         bool active;
     }
@@ -33,23 +24,7 @@ contract EmiAutoPayRaw is AutomationCompatibleInterface, ReentrancyGuard {
     event EmiPaid(uint256 indexed planId, uint256 amount);
     event EmiCompleted(uint256 indexed planId);
 
-    // 🔥 RAW BYTES HELPER FUNCTION
-    function rawTransferFrom(
-        address token,
-        address from,
-        address to,
-        uint256 amount
-    ) internal {
-        bytes memory data = abi.encodeWithSignature(
-            "transferFrom(address,address,uint256)",
-            from,
-            to,
-            amount
-        );
-        (bool success, ) = token.call(data);
-        require(success, "Raw transfer failed");
-    }
-
+    // 🔥 RECEIVER CREATES PLAN (ETH-based amounts)
     function createPlan(uint256 emi, uint256 interval, uint256 total) external {
         require(emi > 0, "Invalid EMI");
         require(interval >= 60, "Min 60s");
@@ -57,8 +32,8 @@ contract EmiAutoPayRaw is AutomationCompatibleInterface, ReentrancyGuard {
 
         planCount++;
         plans[planCount] = Plan({
-            sender: address(0),
-            receiver: msg.sender,
+            sender: payable(address(0)),
+            receiver: payable(msg.sender),
             emi: emi,
             interval: interval,
             total: total,
@@ -69,29 +44,26 @@ contract EmiAutoPayRaw is AutomationCompatibleInterface, ReentrancyGuard {
         emit PlanCreated(planCount);
     }
 
-    // ✅ SIMPLIFIED: Customer approves FIRST, then calls this
-    function activatePlan(
-        uint256 planId,
-        uint256 activationAmount
-    ) external nonReentrant {
+    // 🔥 SENDER ACTIVATES WITH ETH (payable)
+    function activatePlan(uint256 planId) external payable nonReentrant {
         Plan storage p = plans[planId];
         require(p.receiver != address(0), "Invalid plan");
         require(!p.active, "Already active");
+        require(msg.value >= p.emi, "Send at least 1 EMI");
 
-        p.sender = msg.sender;
+        p.sender = payable(msg.sender);
 
-        // RAW BYTES: Downpayment transfer
-        if (activationAmount > 0) {
-            rawTransferFrom(USDT, msg.sender, p.receiver, activationAmount);
-            p.paid += activationAmount;
-            emit EmiPaid(planId, activationAmount);
-        }
+        // ETH TRANSFER - Direct to receiver
+        p.paid += msg.value;
+        p.receiver.transfer(msg.value);
+        emit EmiPaid(planId, msg.value);
 
         p.active = true;
         p.nextPay = block.timestamp + p.interval;
         emit PlanActivated(planId, msg.sender);
     }
 
+    // 🔥 CHAINLINK CHECK (unchanged logic)
     function checkUpkeep(
         bytes calldata
     )
@@ -110,6 +82,7 @@ contract EmiAutoPayRaw is AutomationCompatibleInterface, ReentrancyGuard {
         return (false, "");
     }
 
+    // 🔥 CHAINLINK AUTO-PAY (ETH pull from sender)
     function performUpkeep(bytes calldata data) external override nonReentrant {
         if (data.length == 0) return;
         uint256 planId = abi.decode(data, (uint256));
@@ -117,8 +90,9 @@ contract EmiAutoPayRaw is AutomationCompatibleInterface, ReentrancyGuard {
 
         require(p.active, "Inactive");
 
-        // 🔥 RAW BYTES AUTO-PAYMENT (EMI WORKS!)
-        rawTransferFrom(USDT, p.sender, p.receiver, p.emi);
+        // 🔥 RAW CALL: Pull ETH from sender (requires approval or manual pay)
+        (bool success, ) = p.sender.call{value: p.emi}("");
+        require(success, "ETH transfer failed");
 
         p.paid += p.emi;
         if (p.paid >= p.total) {
@@ -129,7 +103,141 @@ contract EmiAutoPayRaw is AutomationCompatibleInterface, ReentrancyGuard {
             emit EmiPaid(planId, p.emi);
         }
     }
+
+    // Allow contract to receive ETH
+    receive() external payable {}
 }
+
+//raw bytes code without IERC20+permit2
+//EmiAutoPayRaw.sol - NO IERC20, NO Permit2
+
+// import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
+// import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+// contract EmiAutoPayRaw is AutomationCompatibleInterface, ReentrancyGuard {
+//     address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7; // Mainnet USDT
+
+//     constructor(address _usdt) {
+//         require(_usdt != address(0), "Invalid USDT");
+//         // USDT hardcoded for raw bytes demo
+//     }
+
+//     struct Plan {
+//         address sender;
+//         address receiver;
+//         uint256 emi;
+//         uint256 interval;
+//         uint256 total;
+//         uint256 paid;
+//         uint256 nextPay;
+//         bool active;
+//     }
+
+//     uint256 public planCount;
+//     mapping(uint256 => Plan) public plans;
+
+//     event PlanCreated(uint256 indexed planId);
+//     event PlanActivated(uint256 indexed planId, address sender);
+//     event EmiPaid(uint256 indexed planId, uint256 amount);
+//     event EmiCompleted(uint256 indexed planId);
+
+//     // 🔥 RAW BYTES HELPER FUNCTION
+//     function rawTransferFrom(
+//         address token,
+//         address from,
+//         address to,
+//         uint256 amount
+//     ) internal {
+//         bytes memory data = abi.encodeWithSignature(
+//             "transferFrom(address,address,uint256)",
+//             from,
+//             to,
+//             amount
+//         );
+//         (bool success, ) = token.call(data);
+//         require(success, "Raw transfer failed");
+//     }
+
+//     function createPlan(uint256 emi, uint256 interval, uint256 total) external {
+//         require(emi > 0, "Invalid EMI");
+//         require(interval >= 60, "Min 60s");
+//         require(total >= emi, "Total < EMI");
+
+//         planCount++;
+//         plans[planCount] = Plan({
+//             sender: address(0),
+//             receiver: msg.sender,
+//             emi: emi,
+//             interval: interval,
+//             total: total,
+//             paid: 0,
+//             nextPay: 0,
+//             active: false
+//         });
+//         emit PlanCreated(planCount);
+//     }
+
+//     // ✅ SIMPLIFIED: Customer approves FIRST, then calls this
+//     function activatePlan(
+//         uint256 planId,
+//         uint256 activationAmount
+//     ) external nonReentrant {
+//         Plan storage p = plans[planId];
+//         require(p.receiver != address(0), "Invalid plan");
+//         require(!p.active, "Already active");
+
+//         p.sender = msg.sender;
+
+//         // RAW BYTES: Downpayment transfer
+//         if (activationAmount > 0) {
+//             rawTransferFrom(USDT, msg.sender, p.receiver, activationAmount);
+//             p.paid += activationAmount;
+//             emit EmiPaid(planId, activationAmount);
+//         }
+
+//         p.active = true;
+//         p.nextPay = block.timestamp + p.interval;
+//         emit PlanActivated(planId, msg.sender);
+//     }
+
+//     function checkUpkeep(
+//         bytes calldata
+//     )
+//         external
+//         view
+//         override
+//         returns (bool upkeepNeeded, bytes memory performData)
+//     {
+//         if (planCount == 0) return (false, "");
+//         for (uint256 i = 1; i <= planCount; i++) {
+//             Plan storage p = plans[i];
+//             if (p.active && p.paid < p.total && block.timestamp >= p.nextPay) {
+//                 return (true, abi.encode(i));
+//             }
+//         }
+//         return (false, "");
+//     }
+
+//     function performUpkeep(bytes calldata data) external override nonReentrant {
+//         if (data.length == 0) return;
+//         uint256 planId = abi.decode(data, (uint256));
+//         Plan storage p = plans[planId];
+
+//         require(p.active, "Inactive");
+
+//         // 🔥 RAW BYTES AUTO-PAYMENT (EMI WORKS!)
+//         rawTransferFrom(USDT, p.sender, p.receiver, p.emi);
+
+//         p.paid += p.emi;
+//         if (p.paid >= p.total) {
+//             p.active = false;
+//             emit EmiCompleted(planId);
+//         } else {
+//             p.nextPay = block.timestamp + p.interval;
+//             emit EmiPaid(planId, p.emi);
+//         }
+//     }
+// }
 
 // //IERC20 + permit2 code
 // //EmiAutoPay.sol

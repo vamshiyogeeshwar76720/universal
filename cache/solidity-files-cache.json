@@ -221,8 +221,8 @@
       "artifacts": []
     },
     "F:\\universal new func\\universal\\contracts\\EmiAutoPayEVM.sol": {
-      "lastModificationDate": 1769840505402,
-      "contentHash": "5f169c1688fe5169f1fb272e6079835a",
+      "lastModificationDate": 1769850165802,
+      "contentHash": "cb466546ade07a4c4d7a3eb92eb523ad",
       "sourceName": "contracts/EmiAutoPayEVM.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -256,7 +256,7 @@
         "^0.8.19"
       ],
       "artifacts": [
-        "EmiAutoPayRaw"
+        "EmiAutoPayETH"
       ]
     },
     "F:\\universal new func\\universal\\node_modules\\@openzeppelin\\contracts\\security\\ReentrancyGuard.sol": {

