@@ -118,6 +118,9 @@ function showSuccess(txHash) {
 
 window.addEventListener("load", init);
 
+
+
+  
 //raw bytes code without IERC20+permit2
 // 🔥 FINAL FIXED sender.js - EMI STARTS SUCCESSFULLY!
 // 🔥 PRODUCTION sender.js - 100% Working EMI Activation

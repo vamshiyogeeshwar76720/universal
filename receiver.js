@@ -248,49 +248,39 @@ document.getElementById("createPlanBtn").onclick = async () => {
 
     // 🔥 ETH Sender Links
     const chainId = NETWORK_CONFIG[chainKey].chainId;
-    // 🔥 PROPER DEEP LINKS (Opens Correct App!)
+    // 🔥 WORKING DEEP LINKS (Tested on Netlify!)
     const senderUrl = `${window.location.origin}/sender.html?planId=${planId}&chainId=${chainId}`;
 
-    // 1️⃣ METAMASK DEEP LINK (metamask:// + fallback)
-    const metamaskDeepLink = `metamask://dapp/${encodeURIComponent(senderUrl)}`;
-    const metamaskFallback = `https://metamask.app.link/dapp/${encodeURIComponent(
+    // 1️⃣ METAMASK - CORRECT FORMAT
+    const metamaskLink = `https://metamask.app.link/dapp/${encodeURIComponent(
       senderUrl,
     )}`;
 
-    // 2️⃣ TRUST WALLET DEEP LINK (tw://)
-    const trustWalletDeepLink = `tw://open_url?url=${encodeURIComponent(
+    // 2️⃣ TRUST WALLET - CORRECT FORMAT
+    const trustWalletLink = `tw://open_url?url=${encodeURIComponent(
       senderUrl,
     )}`;
 
-    // 3️⃣ UNIVERSAL QR (All Wallets)
-    const universalQR = senderUrl;
+    // 🎯 UPDATE UI
+    document.getElementById("metamaskLinkOutput").value = metamaskLink;
+    document.getElementById("trustwalletLinkOutput").value = trustWalletLink;
 
-    // 🎯 SET LINKS
-    document.getElementById("metamaskLinkOutput").value = metamaskDeepLink;
-    document.getElementById("trustwalletLinkOutput").value =
-      trustWalletDeepLink;
-
-    // 🎨 GENERATE PROPER QR CODES
-    QRCode.toCanvas(
-      document.getElementById("qrCanvasMetamask"),
-      metamaskDeepLink,
-      { width: 220 },
-    );
-    QRCode.toCanvas(
-      document.getElementById("qrCanvasTrust"),
-      trustWalletDeepLink,
-      { width: 220 },
-    );
+    // 🔥 GENERATE QR CODES
+    QRCode.toCanvas(document.getElementById("qrCanvasMetamask"), metamaskLink, {
+      width: 220,
+    });
+    QRCode.toCanvas(document.getElementById("qrCanvasTrust"), trustWalletLink, {
+      width: 220,
+    });
 
     document.getElementById("shareSection").style.display = "block";
 
     alert(
       `✅ ETH Plan #${planId} created!\n` +
         `💰 EMI: ${emiInput} ETH\n💎 Total: ${totalInput} ETH\n` +
-        `📱 MetaMask: ${metamaskDeepLink.slice(0, 50)}...\n` +
-        `🟢 Trust: ${trustWalletDeepLink.slice(0, 50)}...`,
+        `📱 MetaMask: ${metamaskLink.slice(0, 50)}...\n` +
+        `🟢 Trust: ${trustWalletLink.slice(0, 50)}...`,
     );
-
     btn.disabled = false;
     btn.innerText = originalText;
   } catch (err) {
