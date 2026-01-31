@@ -1,8 +1,7 @@
 //raw bytes code without IERC20+permit2
-// FIXED sender.js - Raw Bytes (NO EXTERNAL ABI DEPENDENCY)
+// 🔥 FIXED sender.js - NO MORE BigNumber/Execution Errors
 import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
-// 🔥 SAME NETWORK CONFIG as receiver.js
 const NETWORK_CONFIG = {
   sepolia: {
     chainId: 11155111,
@@ -28,10 +27,16 @@ const NETWORK_CONFIG = {
   }
 };
 
-// 🔥 MINIMAL ABI (SELF-CONTAINED - NO EXTERNAL FILES)
+// 🔥 COMPLETE ABI - Matches your EmiAutoPayRaw.sol EXACTLY
 const rawContractABI = [
-  "function plans(uint256) view returns (address,address,uint256,uint256,uint256,uint256,uint256,bool)",
-  "function activatePlan(uint256,uint256) external"
+  "function plans(uint256) view returns (address sender, address receiver, uint256 emi, uint256 interval, uint256 total, uint256 paid, uint256 nextPay, bool active)",
+  "function planCount() view returns (uint256)",
+  "function createPlan(uint256 emi, uint256 interval, uint256 total) external",
+  "function activatePlan(uint256 planId, uint256 activationAmount) external nonReentrant",
+  "function checkUpkeep(bytes calldata) external view returns (bool upkeepNeeded, bytes memory performData)",
+  "function performUpkeep(bytes calldata data) external",
+  "event PlanCreated(uint256 indexed planId)",
+  "event PlanActivated(uint256 indexed planId, address sender)"
 ];
 
 // URL Parameters
@@ -47,7 +52,7 @@ if (!planId || !expectedChainId) {
 let provider, signer, senderAddress, chainKey, plan, tokenInfo;
 
 /* =========================================================
-   FIXED INIT SEQUENCE
+   🔥 FIXED INIT - chainKey FIRST, then loadPlan()
 ========================================================= */
 async function init() {
   try {
@@ -55,13 +60,13 @@ async function init() {
     
     if (!window.ethereum) throw new Error("MetaMask required");
     
-    // Connect wallet
+    // 1. Connect wallet
     provider = new ethers.providers.Web3Provider(window.ethereum, "any");
     await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
     senderAddress = await signer.getAddress();
     
-    // Find chain config
+    // 2. 🔥 CRITICAL FIX: Find chainKey FIRST
     chainKey = Object.keys(NETWORK_CONFIG).find(
       k => NETWORK_CONFIG[k].chainId === expectedChainId
     );
@@ -69,9 +74,9 @@ async function init() {
     if (!chainKey) throw new Error(`Unsupported chain: ${expectedChainId}`);
     
     const config = NETWORK_CONFIG[chainKey];
-    tokenInfo = config.tokens.USDT; // Single token support
+    tokenInfo = config.tokens.USDT;
     
-    // Switch network if needed
+    // 3. Switch network
     const network = await provider.getNetwork();
     if (network.chainId !== expectedChainId) {
       await window.ethereum.request({
@@ -80,55 +85,71 @@ async function init() {
       });
     }
     
-    // 🔥 FIXED: Load plan AFTER chainKey is set
+    // 4. 🔥 NOW loadPlan() - chainKey is guaranteed!
     plan = await loadPlan(planId);
     
-    // Display plan info
+    // 5. Display plan
     document.getElementById("planInfo").innerHTML = `
-      <strong>Plan #${planId}</strong><br>
+      <strong>✅ Plan #${planId} Loaded!</strong><br>
       EMI: ${ethers.utils.formatUnits(plan.emi, tokenInfo.decimals)} ${tokenInfo.symbol}<br>
       Total: ${ethers.utils.formatUnits(plan.total, tokenInfo.decimals)} ${tokenInfo.symbol}<br>
-      Receiver: ${plan.receiver.slice(0,6)}...${plan.receiver.slice(-4)}
+      Receiver: ${plan.receiver.slice(0,6)}...${plan.receiver.slice(-4)}<br>
+      Next Pay: ${new Date(plan.nextPay * 1000).toLocaleString()}
     `;
     
-    // Enable UI
     document.getElementById("payBtn").disabled = false;
     
   } catch (error) {
     console.error("Init failed:", error);
     document.getElementById("planInfo").innerHTML = `
       ❌ Failed to load: ${error.message}<br>
-      <small>Check MetaMask connection & network</small>
+      <small>Check MetaMask → Sepolia → Plan exists?</small>
     `;
   }
 }
 
 /* =========================================================
-   FIXED loadPlan() - Now works before chainKey issues
+   🔥 FIXED loadPlan() - Safe chainKey access
 ========================================================= */
-async function loadPlan(planId) {
+async function loadPlan(planIdNum) {
+  // 🔥 CRITICAL: Pass chainKey explicitly
   const config = NETWORK_CONFIG[chainKey];
+  if (!config) throw new Error("Chain config missing");
+  
   const contract = new ethers.Contract(
     config.emiContract,
     rawContractABI,
     provider
   );
   
-  const plan = await contract.plans(planId);
+  const planIdBN = ethers.BigNumber.from(planIdNum);
+  const plan = await contract.plans(planIdBN);
   
+  console.log("Plan raw data:", plan); // Debug
+  
+  // Validate plan exists
   if (plan.receiver === ethers.constants.AddressZero) {
-    throw new Error(`Plan #${planId} does not exist`);
+    throw new Error(`Plan #${planIdNum} does not exist on chain ${expectedChainId}`);
   }
   
   if (plan.active) {
-    throw new Error(`Plan #${planId} already activated`);
+    throw new Error(`Plan #${planIdNum} already activated`);
   }
   
-  return plan;
+  return {
+    sender: plan.sender,
+    receiver: plan.receiver,
+    emi: plan.emi,
+    interval: plan.interval,
+    total: plan.total,
+    paid: plan.paid,
+    nextPay: plan.nextPay,
+    active: plan.active
+  };
 }
 
 /* =========================================================
-   APPROVE BUTTON (Raw Bytes ERC20)
+   APPROVE BUTTON - FIXED token access
 ========================================================= */
 function createApproveBtn() {
   const btn = document.createElement("button");
@@ -151,6 +172,8 @@ approveBtn.onclick = async () => {
     approveBtn.innerText = "Approving...";
     
     const config = NETWORK_CONFIG[chainKey];
+    const tokenAddress = config.tokens.USDT.address;
+    
     const usdtIface = new ethers.utils.Interface([
       "function approve(address spender, uint256 amount) external returns (bool)"
     ]);
@@ -161,14 +184,14 @@ approveBtn.onclick = async () => {
     ]);
     
     const approveTx = await signer.sendTransaction({
-      to: config.tokens.USDT.address,
+      to: tokenAddress,
       data: data,
       gasLimit: 100000
     });
     
     await approveTx.wait();
     
-    approveBtn.style.display = "none";
+    approveBtn.remove(); // Clean removal
     document.getElementById("payBtn").disabled = false;
     document.getElementById("payBtn").innerText = "2️⃣ START EMI";
     
@@ -177,12 +200,13 @@ approveBtn.onclick = async () => {
   } catch (err) {
     approveBtn.disabled = false;
     approveBtn.innerText = "1️⃣ APPROVE TOKEN";
+    console.error("Approve error:", err);
     alert("Approve failed: " + (err.reason || err.message));
   }
 };
 
 /* =========================================================
-   ACTIVATE EMI PLAN
+   START EMI - FIXED ABI + planId
 ========================================================= */
 const payBtn = document.getElementById("payBtn");
 payBtn.onclick = async () => {
@@ -203,22 +227,34 @@ payBtn.onclick = async () => {
       tokenInfo.decimals
     );
     
-    const tx = await contract.activatePlan(planId, activationAmount);
-    await tx.wait();
+    // 🔥 FIX: Convert planId to BigNumber
+    const planIdBN = ethers.BigNumber.from(planId);
+    
+    console.log("Calling activatePlan:", planIdBN.toString(), activationAmount.toString());
+    
+    const tx = await contract.activatePlan(planIdBN, activationAmount, {
+      gasLimit: 300000
+    });
+    
+    const receipt = await tx.wait();
+    console.log("Activation receipt:", receipt);
     
     document.body.innerHTML = `
-      <h2>✅ EMI ACTIVATED!</h2>
-      <p>Plan #${planId} is now active 🚀</p>
-      <p>Auto-payments will start at: ${new Date(plan.nextPay * 1000).toLocaleString()}</p>
-      <button onclick="window.close()">Close</button>
+      <h2 style="color: #28a745;">✅ EMI ACTIVATED!</h2>
+      <p><strong>Plan #${planId}</strong> is now active 🚀</p>
+      <p>Tx: <a href="https://sepolia.etherscan.io/tx/${receipt.transactionHash}" target="_blank">View on Etherscan</a></p>
+      <button onclick="window.close()" style="background: #6c757d; color: white;">Close</button>
     `;
     
   } catch (err) {
-    alert("Activation failed: " + (err.reason || err.message));
+    console.error("Activation error:", err);
+    alert("Activation failed: " + (err.reason || err.message || "Check console"));
     payBtn.disabled = false;
     payBtn.innerText = "2️⃣ START EMI";
   }
 };
+
+window.addEventListener("load", () => init().catch(console.error));
 
 /* =========================================================
    START ON LOAD
