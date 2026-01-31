@@ -10,10 +10,10 @@ const NETWORK_CONFIG = {
       USDT: {
         address: "0xFa7Ea86672d261A0A0bfDba22A9F7D2A75581320",
         decimals: 6,
-        symbol: "USDT",
-      },
-    },
-  },
+        symbol: "USDT"
+      }
+    }
+  }
 };
 
 const rawContractABI = [
@@ -23,7 +23,7 @@ const rawContractABI = [
   "function createPlan(uint256 emi, uint256 interval, uint256 total) external",
   "function activatePlan(uint256 planId, uint256 activationAmount) external", // ✅ NO nonReentrant in ABI
   "event PlanCreated(uint256 indexed planId)",
-  "event PlanActivated(uint256 indexed planId, address sender)",
+  "event PlanActivated(uint256 indexed planId, address sender)"
 ];
 
 const params = new URLSearchParams(window.location.search);
@@ -43,39 +43,40 @@ let provider, signer, senderAddress, chainKey, plan, tokenInfo;
 async function init() {
   try {
     document.getElementById("planInfo").innerText = "🔄 Initializing...";
-
+    
     // Wallet connection
     provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
     senderAddress = await signer.getAddress();
-
+    
     // Chain setup
     chainKey = "sepolia"; // Hardcoded for testing
     const config = NETWORK_CONFIG[chainKey];
     tokenInfo = config.tokens.USDT;
-
+    
     // Network switch
     const network = await provider.getNetwork();
     if (network.chainId !== config.chainId) {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: `0x${config.chainId.toString(16)}` }],
+        params: [{ chainId: `0x${config.chainId.toString(16)}` }]
       });
     }
-
+    
     // Load plan
     plan = await loadPlan();
-
+    
     // SUCCESS UI
     document.getElementById("planInfo").innerHTML = `
       ✅ <strong>Plan #${planId}</strong><br>
       💰 EMI: ${ethers.utils.formatUnits(plan.emi, 6)} USDT<br>
       💎 Total: ${ethers.utils.formatUnits(plan.total, 6)} USDT<br>
-      👤 Receiver: ${plan.receiver.slice(0, 6)}...${plan.receiver.slice(-4)}
+      👤 Receiver: ${plan.receiver.slice(0,6)}...${plan.receiver.slice(-4)}
     `;
-
+    
     document.getElementById("payBtn").style.display = "block";
+    
   } catch (error) {
     console.error(error);
     document.getElementById("planInfo").innerHTML = `
@@ -90,27 +91,23 @@ async function init() {
 ========================================================= */
 async function loadPlan() {
   const config = NETWORK_CONFIG[chainKey];
-  const contract = new ethers.Contract(
-    config.emiContract,
-    rawContractABI,
-    provider,
-  );
-
+  const contract = new ethers.Contract(config.emiContract, rawContractABI, provider);
+  
   const planIdBN = ethers.BigNumber.from(planId);
   const plan = await contract.plans(planIdBN);
-
+  
   console.log("📋 Plan data:", {
     sender: plan.sender,
     receiver: plan.receiver,
     emi: plan.emi.toString(),
     total: plan.total.toString(),
-    active: plan.active,
+    active: plan.active
   });
-
+  
   if (plan.receiver === ethers.constants.AddressZero) {
     throw new Error(`Plan #${planId} doesn't exist`);
   }
-
+  
   return plan;
 }
 
@@ -121,8 +118,7 @@ function createApproveBtn() {
   const btn = document.createElement("button");
   btn.id = "approveBtn";
   btn.innerText = "1️⃣ APPROVE USDT";
-  btn.style.cssText =
-    "width:100%; padding:15px; margin:10px 0; background:#ff6b35; color:white; border:none; border-radius:8px; font-size:16px;";
+  btn.style.cssText = "width:100%; padding:15px; margin:10px 0; background:#ff6b35; color:white; border:none; border-radius:8px; font-size:16px;";
   btn.onclick = approveToken;
   document.body.insertBefore(btn, document.getElementById("payBtn"));
   return btn;
@@ -133,28 +129,27 @@ async function approveToken() {
   try {
     approveBtn.disabled = true;
     approveBtn.innerText = "⏳ Approving...";
-
+    
     const config = NETWORK_CONFIG[chainKey];
-    const tokenIface = new ethers.utils.Interface([
-      "function approve(address,uint256)",
-    ]);
-
+    const tokenIface = new ethers.utils.Interface(["function approve(address,uint256)"]);
+    
     const data = tokenIface.encodeFunctionData("approve", [
       config.emiContract,
-      ethers.constants.MaxUint256,
+      ethers.constants.MaxUint256
     ]);
-
+    
     const tx = await signer.sendTransaction({
       to: config.tokens.USDT.address,
       data: data,
-      gasLimit: 80000,
+      gasLimit: 80000
     });
-
+    
     await tx.wait();
-
+    
     approveBtn.remove();
     document.getElementById("payBtn").disabled = false;
     alert("✅ APPROVED! Click START EMI");
+    
   } catch (err) {
     approveBtn.disabled = false;
     approveBtn.innerText = "1️⃣ APPROVE USDT";
@@ -173,37 +168,32 @@ payBtn.onclick = async () => {
   try {
     payBtn.disabled = true;
     payBtn.innerText = "⏳ Starting EMI...";
-
+    
     const config = NETWORK_CONFIG[chainKey];
-    const contract = new ethers.Contract(
-      config.emiContract,
-      rawContractABI,
-      signer,
-    );
-
+    const contract = new ethers.Contract(config.emiContract, rawContractABI, signer);
+    
     const activationAmount = ethers.utils.parseUnits(
-      document.getElementById("activationAmount")?.value || "0",
-      6,
+      document.getElementById("activationAmount")?.value || "0", 6
     );
-
+    
     console.log("🚀 Calling activatePlan:", {
       planId: planId,
-      activationAmount: activationAmount.toString(),
+      activationAmount: activationAmount.toString()
     });
-
+    
     // 🔥 HIGHER GAS + OVERRIDE nonReentrant
     const tx = await contract.activatePlan(
-      ethers.BigNumber.from(planId),
+      ethers.BigNumber.from(planId), 
       activationAmount,
-      {
+      { 
         gasLimit: 500000, // ✅ MUCH HIGHER
-        gasPrice: undefined, // Let MetaMask handle
-      },
+        gasPrice: undefined // Let MetaMask handle
+      }
     );
-
+    
     console.log("📄 Tx sent:", tx.hash);
     const receipt = await tx.wait();
-
+    
     document.body.innerHTML = `
       <div style="text-align:center; padding:40px;">
         <h1 style="color:#28a745;">✅ EMI ACTIVATED!</h1>
@@ -212,9 +202,10 @@ payBtn.onclick = async () => {
         <button onclick="window.close()" style="padding:12px 24px; background:#6c757d; color:white; border:none; border-radius:8px;">Close</button>
       </div>
     `;
+    
   } catch (err) {
     console.error("🎯 Activation error:", err);
-
+    
     // 🔥 BETTER ERROR DECODING
     let errorMsg = err.reason || err.message;
     if (errorMsg.includes("execution reverted")) {
@@ -222,7 +213,7 @@ payBtn.onclick = async () => {
     } else if (errorMsg.includes("insufficient funds")) {
       errorMsg = "❌ Not enough Sepolia ETH for gas";
     }
-
+    
     alert("Activation failed: " + errorMsg);
     payBtn.disabled = false;
     payBtn.innerText = "2️⃣ START EMI";
