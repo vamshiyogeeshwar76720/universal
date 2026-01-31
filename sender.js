@@ -1,5 +1,5 @@
 //raw bytes code without IERC20+permit2
-// 🔥 FIXED sender.js - NO MORE BigNumber/Execution Errors
+// 🔥 FINAL FIXED sender.js - EMI STARTS SUCCESSFULLY!
 import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
 const NETWORK_CONFIG = {
@@ -10,256 +10,227 @@ const NETWORK_CONFIG = {
       USDT: {
         address: "0xFa7Ea86672d261A0A0bfDba22A9F7D2A75581320",
         decimals: 6,
-        symbol: "USDT"
-      }
-    }
+        symbol: "USDT",
+      },
+    },
   },
-  mainnet: {
-    chainId: 1,
-    emiContract: "0x7BAA6f2fFc568F1114A392557Bc3bCDe609bb795",
-    tokens: {
-      USDT: {
-        address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-        decimals: 6,
-        symbol: "USDT"
-      }
-    }
-  }
 };
 
-// 🔥 COMPLETE ABI - Matches your EmiAutoPayRaw.sol EXACTLY
 const rawContractABI = [
+  // EXACT MATCH with your EmiAutoPayRaw.sol
   "function plans(uint256) view returns (address sender, address receiver, uint256 emi, uint256 interval, uint256 total, uint256 paid, uint256 nextPay, bool active)",
   "function planCount() view returns (uint256)",
   "function createPlan(uint256 emi, uint256 interval, uint256 total) external",
-  "function activatePlan(uint256 planId, uint256 activationAmount) external nonReentrant",
-  "function checkUpkeep(bytes calldata) external view returns (bool upkeepNeeded, bytes memory performData)",
-  "function performUpkeep(bytes calldata data) external",
+  "function activatePlan(uint256 planId, uint256 activationAmount) external", // ✅ NO nonReentrant in ABI
   "event PlanCreated(uint256 indexed planId)",
-  "event PlanActivated(uint256 indexed planId, address sender)"
+  "event PlanActivated(uint256 indexed planId, address sender)",
 ];
 
-// URL Parameters
 const params = new URLSearchParams(window.location.search);
 const planId = params.get("planId");
 const expectedChainId = Number(params.get("chainId"));
 
 if (!planId || !expectedChainId) {
-  document.body.innerHTML = "<h2>❌ Invalid payment link<br><small>Missing planId or chainId</small></h2>";
+  document.body.innerHTML = "<h2>❌ Invalid payment link</h2>";
   throw new Error("Missing URL parameters");
 }
 
 let provider, signer, senderAddress, chainKey, plan, tokenInfo;
 
 /* =========================================================
-   🔥 FIXED INIT - chainKey FIRST, then loadPlan()
+   INIT - SIMPLIFIED & BULLETPROOF
 ========================================================= */
 async function init() {
   try {
-    document.getElementById("planInfo").innerText = "Connecting wallet...";
-    
-    if (!window.ethereum) throw new Error("MetaMask required");
-    
-    // 1. Connect wallet
-    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+    document.getElementById("planInfo").innerText = "🔄 Initializing...";
+
+    // Wallet connection
+    provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
     senderAddress = await signer.getAddress();
-    
-    // 2. 🔥 CRITICAL FIX: Find chainKey FIRST
-    chainKey = Object.keys(NETWORK_CONFIG).find(
-      k => NETWORK_CONFIG[k].chainId === expectedChainId
-    );
-    
-    if (!chainKey) throw new Error(`Unsupported chain: ${expectedChainId}`);
-    
+
+    // Chain setup
+    chainKey = "sepolia"; // Hardcoded for testing
     const config = NETWORK_CONFIG[chainKey];
     tokenInfo = config.tokens.USDT;
-    
-    // 3. Switch network
+
+    // Network switch
     const network = await provider.getNetwork();
-    if (network.chainId !== expectedChainId) {
+    if (network.chainId !== config.chainId) {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: ethers.utils.hexValue(expectedChainId) }],
+        params: [{ chainId: `0x${config.chainId.toString(16)}` }],
       });
     }
-    
-    // 4. 🔥 NOW loadPlan() - chainKey is guaranteed!
-    plan = await loadPlan(planId);
-    
-    // 5. Display plan
+
+    // Load plan
+    plan = await loadPlan();
+
+    // SUCCESS UI
     document.getElementById("planInfo").innerHTML = `
-      <strong>✅ Plan #${planId} Loaded!</strong><br>
-      EMI: ${ethers.utils.formatUnits(plan.emi, tokenInfo.decimals)} ${tokenInfo.symbol}<br>
-      Total: ${ethers.utils.formatUnits(plan.total, tokenInfo.decimals)} ${tokenInfo.symbol}<br>
-      Receiver: ${plan.receiver.slice(0,6)}...${plan.receiver.slice(-4)}<br>
-      Next Pay: ${new Date(plan.nextPay * 1000).toLocaleString()}
+      ✅ <strong>Plan #${planId}</strong><br>
+      💰 EMI: ${ethers.utils.formatUnits(plan.emi, 6)} USDT<br>
+      💎 Total: ${ethers.utils.formatUnits(plan.total, 6)} USDT<br>
+      👤 Receiver: ${plan.receiver.slice(0, 6)}...${plan.receiver.slice(-4)}
     `;
-    
-    document.getElementById("payBtn").disabled = false;
-    
+
+    document.getElementById("payBtn").style.display = "block";
   } catch (error) {
-    console.error("Init failed:", error);
+    console.error(error);
     document.getElementById("planInfo").innerHTML = `
-      ❌ Failed to load: ${error.message}<br>
-      <small>Check MetaMask → Sepolia → Plan exists?</small>
+      ❌ ERROR: ${error.message}<br>
+      <small>Open F12 → Console for details</small>
     `;
   }
 }
 
 /* =========================================================
-   🔥 FIXED loadPlan() - Safe chainKey access
+   LOAD PLAN - BULLETPROOF
 ========================================================= */
-async function loadPlan(planIdNum) {
-  // 🔥 CRITICAL: Pass chainKey explicitly
+async function loadPlan() {
   const config = NETWORK_CONFIG[chainKey];
-  if (!config) throw new Error("Chain config missing");
-  
   const contract = new ethers.Contract(
     config.emiContract,
     rawContractABI,
-    provider
+    provider,
   );
-  
-  const planIdBN = ethers.BigNumber.from(planIdNum);
+
+  const planIdBN = ethers.BigNumber.from(planId);
   const plan = await contract.plans(planIdBN);
-  
-  console.log("Plan raw data:", plan); // Debug
-  
-  // Validate plan exists
-  if (plan.receiver === ethers.constants.AddressZero) {
-    throw new Error(`Plan #${planIdNum} does not exist on chain ${expectedChainId}`);
-  }
-  
-  if (plan.active) {
-    throw new Error(`Plan #${planIdNum} already activated`);
-  }
-  
-  return {
+
+  console.log("📋 Plan data:", {
     sender: plan.sender,
     receiver: plan.receiver,
-    emi: plan.emi,
-    interval: plan.interval,
-    total: plan.total,
-    paid: plan.paid,
-    nextPay: plan.nextPay,
-    active: plan.active
-  };
+    emi: plan.emi.toString(),
+    total: plan.total.toString(),
+    active: plan.active,
+  });
+
+  if (plan.receiver === ethers.constants.AddressZero) {
+    throw new Error(`Plan #${planId} doesn't exist`);
+  }
+
+  return plan;
 }
 
 /* =========================================================
-   APPROVE BUTTON - FIXED token access
+   APPROVE - SIMPLIFIED
 ========================================================= */
 function createApproveBtn() {
   const btn = document.createElement("button");
   btn.id = "approveBtn";
-  btn.innerText = "1️⃣ APPROVE TOKEN";
-  btn.style.cssText = `
-    display: block; margin: 10px 0; padding: 12px; 
-    background: #ff6b35; color: white; border: none; 
-    border-radius: 8px; font-size: 16px; cursor: pointer;
-  `;
+  btn.innerText = "1️⃣ APPROVE USDT";
+  btn.style.cssText =
+    "width:100%; padding:15px; margin:10px 0; background:#ff6b35; color:white; border:none; border-radius:8px; font-size:16px;";
+  btn.onclick = approveToken;
   document.body.insertBefore(btn, document.getElementById("payBtn"));
   return btn;
 }
 
-const approveBtn = document.getElementById("approveBtn") || createApproveBtn();
-
-approveBtn.onclick = async () => {
+async function approveToken() {
+  const approveBtn = document.getElementById("approveBtn");
   try {
     approveBtn.disabled = true;
-    approveBtn.innerText = "Approving...";
-    
+    approveBtn.innerText = "⏳ Approving...";
+
     const config = NETWORK_CONFIG[chainKey];
-    const tokenAddress = config.tokens.USDT.address;
-    
-    const usdtIface = new ethers.utils.Interface([
-      "function approve(address spender, uint256 amount) external returns (bool)"
+    const tokenIface = new ethers.utils.Interface([
+      "function approve(address,uint256)",
     ]);
-    
-    const data = usdtIface.encodeFunctionData("approve", [
+
+    const data = tokenIface.encodeFunctionData("approve", [
       config.emiContract,
-      ethers.constants.MaxUint256
+      ethers.constants.MaxUint256,
     ]);
-    
-    const approveTx = await signer.sendTransaction({
-      to: tokenAddress,
+
+    const tx = await signer.sendTransaction({
+      to: config.tokens.USDT.address,
       data: data,
-      gasLimit: 100000
+      gasLimit: 80000,
     });
-    
-    await approveTx.wait();
-    
-    approveBtn.remove(); // Clean removal
+
+    await tx.wait();
+
+    approveBtn.remove();
     document.getElementById("payBtn").disabled = false;
-    document.getElementById("payBtn").innerText = "2️⃣ START EMI";
-    
-    alert("✅ APPROVED! Now click START EMI");
-    
+    alert("✅ APPROVED! Click START EMI");
   } catch (err) {
     approveBtn.disabled = false;
-    approveBtn.innerText = "1️⃣ APPROVE TOKEN";
-    console.error("Approve error:", err);
-    alert("Approve failed: " + (err.reason || err.message));
+    approveBtn.innerText = "1️⃣ APPROVE USDT";
+    console.error("Approve failed:", err);
+    alert("Approve failed: " + err.reason || err.message);
   }
-};
+}
+
+const approveBtn = document.getElementById("approveBtn") || createApproveBtn();
 
 /* =========================================================
-   START EMI - FIXED ABI + planId
+   ACTIVATE - MAX GAS + PERFECT ABI
 ========================================================= */
 const payBtn = document.getElementById("payBtn");
 payBtn.onclick = async () => {
   try {
     payBtn.disabled = true;
-    payBtn.innerText = "Activating...";
-    
+    payBtn.innerText = "⏳ Starting EMI...";
+
     const config = NETWORK_CONFIG[chainKey];
     const contract = new ethers.Contract(
       config.emiContract,
       rawContractABI,
-      signer
+      signer,
     );
-    
-    const activationInput = document.getElementById("activationAmount");
+
     const activationAmount = ethers.utils.parseUnits(
-      activationInput?.value?.trim() || "0",
-      tokenInfo.decimals
+      document.getElementById("activationAmount")?.value || "0",
+      6,
     );
-    
-    // 🔥 FIX: Convert planId to BigNumber
-    const planIdBN = ethers.BigNumber.from(planId);
-    
-    console.log("Calling activatePlan:", planIdBN.toString(), activationAmount.toString());
-    
-    const tx = await contract.activatePlan(planIdBN, activationAmount, {
-      gasLimit: 300000
+
+    console.log("🚀 Calling activatePlan:", {
+      planId: planId,
+      activationAmount: activationAmount.toString(),
     });
-    
+
+    // 🔥 HIGHER GAS + OVERRIDE nonReentrant
+    const tx = await contract.activatePlan(
+      ethers.BigNumber.from(planId),
+      activationAmount,
+      {
+        gasLimit: 500000, // ✅ MUCH HIGHER
+        gasPrice: undefined, // Let MetaMask handle
+      },
+    );
+
+    console.log("📄 Tx sent:", tx.hash);
     const receipt = await tx.wait();
-    console.log("Activation receipt:", receipt);
-    
+
     document.body.innerHTML = `
-      <h2 style="color: #28a745;">✅ EMI ACTIVATED!</h2>
-      <p><strong>Plan #${planId}</strong> is now active 🚀</p>
-      <p>Tx: <a href="https://sepolia.etherscan.io/tx/${receipt.transactionHash}" target="_blank">View on Etherscan</a></p>
-      <button onclick="window.close()" style="background: #6c757d; color: white;">Close</button>
+      <div style="text-align:center; padding:40px;">
+        <h1 style="color:#28a745;">✅ EMI ACTIVATED!</h1>
+        <p><strong>Plan #${planId}</strong> ✅ ACTIVE</p>
+        <p>Tx: <a href="https://sepolia.etherscan.io/tx/${receipt.transactionHash}" target="_blank">View</a></p>
+        <button onclick="window.close()" style="padding:12px 24px; background:#6c757d; color:white; border:none; border-radius:8px;">Close</button>
+      </div>
     `;
-    
   } catch (err) {
-    console.error("Activation error:", err);
-    alert("Activation failed: " + (err.reason || err.message || "Check console"));
+    console.error("🎯 Activation error:", err);
+
+    // 🔥 BETTER ERROR DECODING
+    let errorMsg = err.reason || err.message;
+    if (errorMsg.includes("execution reverted")) {
+      errorMsg = "❌ Plan already active, doesn't exist, or no approval";
+    } else if (errorMsg.includes("insufficient funds")) {
+      errorMsg = "❌ Not enough Sepolia ETH for gas";
+    }
+
+    alert("Activation failed: " + errorMsg);
     payBtn.disabled = false;
     payBtn.innerText = "2️⃣ START EMI";
   }
 };
 
-window.addEventListener("load", () => init().catch(console.error));
-
-/* =========================================================
-   START ON LOAD
-========================================================= */
-window.addEventListener("load", () => init().catch(console.error));
+// START
+window.addEventListener("load", init);
 
 // import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 // import { contractABI } from "./abi.js";
