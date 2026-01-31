@@ -7,18 +7,103 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        #planInfo {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .primary {
+            background: #28a745;
+            color: white;
+        }
+
+        .secondary {
+            background: #007bff;
+            color: white;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>EMI Auto-Pay Activation</h2>
+    <div id="planInfo">Connecting wallet...</div>
+
+    <label>Down Payment (Optional)</label>
+    <input type="number" id="activationAmount" placeholder="0 USDT" step="0.000001" value="0">
+
+    <!-- Buttons auto-managed by JS -->
+    <button id="payBtn" disabled class="secondary">
+        2️⃣ START EMI (Approve First)
+    </button>
+
+    <script type="module" src="./sender.js" defer></script>
+</body>
+
+</html>
+
+<!-- <!DOCTYPE html>
+<html>
+
+<head>
+    <title>Pay EMI (Raw Bytes)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 </head>
 
 <body>
     <h2>EMI Auto-Pay (Raw Bytes Edition 🚀)</h2>
     <p id="planInfo">Loading...</p>
     <input type="number" id="activationAmount" placeholder="Down Payment USDT (optional)" step="0.000001">
-    <!-- Button 1 auto-created by JS -->
+    Button 1 auto-created by JS
     <button id="payBtn" disabled>2️⃣ START EMI (Approve First)</button>
     <script type="module" src="./sender.js" defer></script>
 </body>
 
-</html>
+</html> -->
 <!-- IERC20 + permit2 code -->
 <!-- <!DOCTYPE html>
 <html lang="en">
