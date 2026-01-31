@@ -24,7 +24,7 @@ const NETWORK_CONFIG = {
   sepolia: {
     chainId: 11155111,
     name: "Sepolia Testnet",
-    emiContract: "0x4BB8Aa2908De544081Bf2F9Ca69cB7447C4A7C82",
+    emiContract: "0x0955125fe05Bf65E642EB95a1704806Dcb79CACb",
   },
   mainnet: {
     chainId: 1,
@@ -228,30 +228,32 @@ async function toggleDirectPayment(planId, receiverAddress, emiAmount) {
 /* =========================================================
    FIXED: showDirectPaymentInstructions
 ========================================================= */
-function showDirectPaymentInstructions(planId, receiverAddress, emiAmount) {
+// 🔥 REPLACE showDirectPaymentInstructions function ONLY
+function showDirectPaymentInstructions(planId, receiverAddress, emiAmount, contractAddress) {
   const instructions = `
     <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 24px; border-radius: 16px; margin: 20px 0; border: 3px solid #f59e0b;">
       <h3 style="color: #b45309; margin-bottom: 16px;">🎯 DIRECT ETH PAYMENT READY!</h3>
-      <p><strong>Senders can now pay you DIRECTLY:</strong></p>
+      <p><strong>Senders pay to EMI CONTRACT (auto-forwards to you):</strong></p>
       <div style="background: #1f2937; color: #f9fafb; padding: 16px; border-radius: 12px; word-break: break-all; font-family: monospace; font-size: 14px; margin: 16px 0;">
-        ${receiverAddress}
+        ${contractAddress}  <!-- 🔥 CONTRACT ADDRESS, NOT RECEIVER! -->
       </div>
       <p style="font-size: 14px; color: #92400e;">
-        💡 Sender: MetaMask → Send <strong>${emiAmount} ETH</strong> → Your address<br>
-        ✅ EMI Plan #${planId} auto-starts immediately!
+        💡 Sender: MetaMask → Send <strong>${emiAmount} ETH</strong> → <strong>CONTRACT ABOVE</strong><br>
+        ✅ Plan #${planId} auto-starts → ETH auto-forwards to you!
       </p>
-      <button onclick="copyAddress('${receiverAddress}')" style="background: #10b981; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-top: 12px; width: 100%;">
-        📋 Copy My Address
+      <button onclick="copyAddress('${contractAddress}')" style="background: #10b981; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-top: 12px; width: 100%;">
+        📋 Copy CONTRACT Address
       </button>
     </div>
   `;
-
+  
   const directSection = document.getElementById("directPaymentSection");
   if (directSection) {
     directSection.innerHTML = instructions;
     directSection.style.display = "block";
   }
 }
+
 
 /* =========================================================
    FIXED: Modify Receiver (Disabled - No contract function)
@@ -363,8 +365,15 @@ if (document.getElementById("createPlanBtn")) {
       linkBtn.className = "primary-btn";
       linkBtn.style.marginTop = "16px";
       linkBtn.style.width = "100%";
+      // 🔥 UPDATE toggleDirectPayment call in createPlanBtn
       linkBtn.onclick = () =>
-        toggleDirectPayment(planId, receiverAddress, emiInput);
+        toggleDirectPayment(
+          planId,
+          receiverAddress,
+          emiInput,
+          NETWORK_CONFIG[chainKey].emiContract,
+        );
+
       document.getElementById("shareSection").appendChild(linkBtn);
 
       alert(

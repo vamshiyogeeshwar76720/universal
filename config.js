@@ -17,7 +17,7 @@ const CHAINS = {
       name: "Sepolia",
       chainId: 11155111,
       rpc: "https://sepolia.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
-      emiContract: "0x4BB8Aa2908De544081Bf2F9Ca69cB7447C4A7C82",
+      emiContract: "0x0955125fe05Bf65E642EB95a1704806Dcb79CACb",
     },
 
     mainnet: {
