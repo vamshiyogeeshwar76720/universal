@@ -20,88 +20,88 @@
             padding: 20px;
             min-height: 100vh;
             background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-            padding: 20px;
+            text-align: center;
         }
 
         h2 {
             color: #0c4a6e;
-            text-align: center;
-            margin: 20px 0 10px 0;
+            margin: 30px 0 20px 0;
             font-size: 28px;
             font-weight: 700;
         }
 
         #planInfo {
             background: linear-gradient(135deg, #10b98115, #05966915);
-            padding: 24px;
-            border-radius: 16px;
+            padding: 30px;
+            border-radius: 20px;
             margin: 20px 0;
-            border-left: 5px solid #10b981;
-            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
-            text-align: center;
-            min-height: 200px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            border: 3px solid #10b981;
+            box-shadow: 0 12px 40px rgba(16, 185, 129, 0.2);
         }
 
-        #status {
+        .emi-amount {
+            font-size: 36px;
+            font-weight: 800;
             color: #059669;
-            font-weight: 600;
+            margin: 20px 0;
+            text-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+        }
+
+        .receiver {
+            color: #374151;
+            font-size: 14px;
             margin: 10px 0;
         }
 
-        button {
+        #activateBtn {
             width: 100%;
-            padding: 20px;
-            margin: 16px 0;
+            padding: 25px;
+            margin: 30px 0;
             border: none;
-            border-radius: 16px;
-            font-size: 18px;
-            font-weight: 700;
+            border-radius: 20px;
+            font-size: 22px;
+            font-weight: 800;
             cursor: pointer;
+            background: linear-gradient(45deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 12px 40px rgba(16, 185, 129, 0.4);
             transition: all 0.3s ease;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         }
 
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+        #activateBtn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 50px rgba(16, 185, 129, 0.5);
         }
 
-        button:disabled {
+        #activateBtn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
 
-        .primary {
-            background: linear-gradient(45deg, #10b981, #059669);
+        .success-screen {
+            padding: 60px 20px;
+            max-width: 400px;
+            margin: auto;
+            background: linear-gradient(135deg, #10b98120, #05966920);
+        }
+
+        .success-icon {
+            font-size: 100px;
+            color: #10b981;
+            margin: 20px 0;
+        }
+
+        .close-btn {
+            padding: 18px 40px;
+            margin-top: 20px;
+            background: #6b7280;
             color: white;
-        }
-
-        .success {
-            background: linear-gradient(45deg, #10b981, #059669);
-        }
-
-        .error {
-            background: linear-gradient(45deg, #ef4444, #dc2626);
-            color: white;
-        }
-
-        .loading {
-            background: linear-gradient(45deg, #3b82f6, #1d4ed8);
-            color: white;
-        }
-
-        #connectBtn {
-            display: block;
+            border: none;
+            border-radius: 16px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 600;
         }
 
         @media (max-width: 480px) {
@@ -113,15 +113,129 @@
 </head>
 
 <body>
-    <div class="container">
-        <h2>🚀 ETH EMI Activation</h2>
-        <div id="planInfo">
-            <div id="status">🔍 Detecting wallet...</div>
-            <div id="errorMsg" style="display:none; color:#ef4444;"></div>
+    <h2>🚀 Activate ETH EMI Plan</h2>
+
+    <div id="planInfo">
+        <div class="emi-amount" id="emiAmount">0.01 ETH</div>
+        <div id="planDetails">
+            <strong>Plan #<span id="planIdDisplay">-</span></strong><br>
+            👤 Receiver: <span id="receiverDisplay">-</span><br>
+            💎 Total: <span id="totalDisplay">-</span> ETH
         </div>
-        <button id="connectBtn" class="primary">🔗 Connect Wallet</button>
+        <button id="activateBtn" onclick="activatePlan()">🚀 SEND EMI PAYMENT NOW</button>
     </div>
-    <script type="module" src="./sender.js" defer></script>
+
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
+    <script>
+        // 🔥 PURE ETH - NO WALLET CONNECT, NO APPROVALS!
+        (async function () {
+            try {
+                // Get plan from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const planId = urlParams.get('planId');
+
+                if (!planId) {
+                    document.getElementById('planInfo').innerHTML =
+                        '<h3>❌ Invalid EMI Link</h3><p>Please use a valid plan link</p>';
+                    return;
+                }
+
+                // Contract details
+                const CONTRACT_ADDRESS = "0xEb0D024185187f1f7e6daBd6a293157D6318cf5E";
+                const ABI = [
+                    "function plans(uint256) view returns (address,address,uint256,uint256,uint256,uint256,uint256,bool)"
+                ];
+
+                // 🔥 LOAD PLAN DATA (Public read - NO WALLET NEEDED)
+                const provider = new ethers.providers.JsonRpcProvider('https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161');
+                const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+
+                document.getElementById('planIdDisplay').textContent = planId;
+
+                const plan = await contract.plans(ethers.BigNumber.from(planId));
+
+                // Display plan details
+                const emiEth = ethers.utils.formatEther(plan.emi);
+                const totalEth = ethers.utils.formatEther(plan.total);
+
+                document.getElementById('emiAmount').textContent = emiEth + ' ETH';
+                document.getElementById('receiverDisplay').textContent =
+                    plan.receiver.slice(0, 6) + '...' + plan.receiver.slice(-4);
+                document.getElementById('totalDisplay').textContent = totalEth;
+
+                // Store for payment
+                window.planData = {
+                    planId: planId,
+                    emi: plan.emi,
+                    receiver: plan.receiver,
+                    contract: new ethers.Contract(CONTRACT_ADDRESS, [
+                        "function activatePlan(uint256) external payable"
+                    ], provider)
+                };
+
+            } catch (error) {
+                console.error('Load failed:', error);
+                document.getElementById('planInfo').innerHTML =
+                    '<h3>❌ Plan not found</h3><p>Plan may not exist or network error</p>';
+            }
+        })();
+
+        // 🔥 1-CLICK ETH PAYMENT (MetaMask handles everything)
+        async function activatePlan() {
+            const btn = document.getElementById('activateBtn');
+            const emiEth = document.getElementById('emiAmount').textContent;
+
+            btn.disabled = true;
+            btn.innerText = '⏳ Confirm in Wallet...';
+
+            try {
+                if (!window.ethereum) {
+                    throw new Error('MetaMask/Trust Wallet required');
+                }
+
+                // 🔥 DIRECT CONTRACT CALL - NO APPROVALS!
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = provider.getSigner();
+                const contract = window.planData.contract.connect(signer);
+
+                const tx = await contract.activatePlan(
+                    ethers.BigNumber.from(window.planData.planId),
+                    {
+                        value: window.planData.emi,
+                        gasLimit: 300000
+                    }
+                );
+
+                btn.innerText = '✅ Waiting confirmation...';
+
+                const receipt = await tx.wait();
+                showSuccess(receipt.transactionHash, emiEth);
+
+            } catch (error) {
+                console.error('Payment failed:', error);
+                btn.disabled = false;
+                btn.innerText = '🚀 SEND EMI PAYMENT NOW';
+
+                if (error.code === 4001) {
+                    alert('❌ Payment rejected by user');
+                } else {
+                    alert('❌ ' + (error.reason || error.message || 'Payment failed'));
+                }
+            }
+        }
+
+        function showSuccess(txHash, emiEth) {
+            document.body.innerHTML = `
+                <div class="success-screen">
+                    <div class="success-icon">✅</div>
+                    <h1>EMI ACTIVATED!</h1>
+                    <p><strong>Plan activated successfully!</strong></p>
+                    <p>Sent: ${emiEth} | Tx: <a href="https://sepolia.etherscan.io/tx/${txHash}" target="_blank">${txHash.slice(0, 12)}...</a></p>
+                    <button class="close-btn" onclick="window.close()">Close</button>
+                </div>
+            `;
+        }
+    </script>
 </body>
 
 </html>
