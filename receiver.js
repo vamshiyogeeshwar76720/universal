@@ -144,6 +144,17 @@ async function handleConnectWallet() {
 
     const supportedChainIds = NetworkService.getSupportedChainIds();
     await WalletService.connectWallet(supportedChainIds);
+
+    // Force Sepolia testnet for receiver dashboard
+    const SEPOLIA_CHAIN_ID = 11155111;
+    const state = WalletService.getConnectionState();
+
+    if (state.chainId !== SEPOLIA_CHAIN_ID) {
+      connectBtn.innerText = "Switching to Sepolia...";
+      await NetworkService.requestNetworkSwitch(SEPOLIA_CHAIN_ID);
+      // Wait for network switch to complete
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
   } catch (error) {
     console.error("Connection failed:", error);
     showError(`Connection failed: ${error.message}`);
@@ -272,58 +283,81 @@ window.createAndLinkPlan = async function () {
 
   try {
     createBtn.disabled = true;
-    createBtn.innerText = "Creating Plan...";
+    createBtn.innerText = "⏳ Creating Plan...";
 
     // Parse inputs
     const emiWei = ethers.utils.parseEther(emiInput);
     const totalWei = ethers.utils.parseEther(totalInput);
 
-    console.log("📋 Creating plan with:", {
+    console.log("📋 [PHASE 1] Creating EMI Plan...", {
       emiWei: emiWei.toString(),
       intervalSeconds,
       totalWei: totalWei.toString(),
     });
 
-    // Step 1: Create plan
+    // ============================================================================
+    // STEP 1: CREATE PLAN (On-Chain)
+    // ============================================================================
     const tx1 = await appState.contract.createPlan(
       emiWei,
       intervalSeconds,
       totalWei,
     );
     console.log("✅ Plan creation tx sent:", tx1.hash);
+    createBtn.innerText = "⏳ Confirming plan creation...";
 
     const receipt1 = await tx1.wait();
-    console.log("✅ Plan creation confirmed");
+    console.log(
+      "✅ Plan creation confirmed (Block:",
+      receipt1.blockNumber + ")",
+    );
 
-    // Step 2: Parse plan ID from event
+    // Parse plan ID from PlanCreated event
     const planId = parsePlanCreatedEvent(receipt1);
     if (!planId) {
       throw new Error("Failed to extract plan ID from event");
     }
 
     appState.currentPlanId = planId.toString();
-    console.log("📦 Plan ID:", appState.currentPlanId);
+    console.log("📦 Plan ID created:", appState.currentPlanId);
 
-    createBtn.innerText = "Linking Plan...";
+    // ============================================================================
+    // STEP 2: AUTO-LINK PLAN TO RECEIVER WALLET (On-Chain)
+    // ============================================================================
+    createBtn.innerText = "⏳ Linking plan to your wallet...";
+    console.log("📋 [PHASE 1] Linking plan to receiver:", state.address);
 
-    // Step 3: Link plan to direct payment
     const tx2 = await appState.contract.linkPlanToDirectPayment(
       appState.currentPlanId,
     );
-    console.log("✅ Link tx sent:", tx2.hash);
-    await tx2.wait();
-    console.log("✅ Plan linked to direct payment");
+    console.log("✅ Plan linking tx sent:", tx2.hash);
+    createBtn.innerText = "⏳ Confirming plan link...";
 
-    createBtn.innerText = "Registering Monitor...";
+    const receipt2 = await tx2.wait();
+    console.log(
+      "✅ Plan linked successfully (Block:",
+      receipt2.blockNumber + ")",
+    );
 
-    // Step 4: Register monitoring service
-    await registerMonitoring(appState.currentPlanId);
+    // ============================================================================
+    // STEP 3: REGISTER OFF-CHAIN MONITORING (Vercel Backend)
+    // ============================================================================
+    createBtn.innerText = "⏳ Starting payment monitoring...";
+    console.log("📡 [PHASE 2] Registering off-chain monitoring...");
 
-    // Step 5: Show success screen
-    showSuccessScreen(appState.currentPlanId, emiInput);
+    await registerMonitoring(appState.currentPlanId, state.address);
+
+    // ============================================================================
+    // STEP 4: SHOW SUCCESS SCREEN WITH SHARING OPTIONS
+    // ============================================================================
+    console.log(
+      "✅ [PHASE 1-2] Plan setup complete! Showing success screen...",
+    );
+    showSuccessScreen(appState.currentPlanId, emiInput, state.address);
   } catch (error) {
-    console.error("Error:", error);
-    showError(`Failed: ${error.reason || error.message || "Unknown error"}`);
+    console.error("❌ Error:", error);
+    const errorMsg = error.reason || error.message || "Unknown error";
+    showError(`Transaction failed: ${errorMsg}`);
   } finally {
     createBtn.innerText = originalText;
     createBtn.disabled = false;
@@ -354,30 +388,48 @@ function parsePlanCreatedEvent(receipt) {
 
 /**
  * Register plan with monitoring service
+ * Backend will detect incoming ETH transfers to receiver address via RPC event logs
  */
-async function registerMonitoring(planId) {
+async function registerMonitoring(planId, receiverAddress) {
   try {
     const state = WalletService.getConnectionState();
     const config = NetworkService.getNetworkConfig(state.chainId);
 
     const monitorUrl = "https://emi-monitor.vercel.app";
+    const payload = {
+      planId: planId.toString(),
+      receiver: receiverAddress || state.address,
+      chainId: state.chainId,
+      contract: config.emiContract,
+    };
 
-    const response = await fetch(`${monitorUrl}/register`, {
+    console.log("📡 [DEBUG] Sending registration to monitor service:");
+    console.log("   URL:", `${monitorUrl}/monitor`);
+    console.log("   Payload:", payload);
+
+    const response = await fetch(`${monitorUrl}/monitor`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        planId: planId.toString(),
-        receiver: state.address,
-        chainId: state.chainId,
-        contract: config.emiContract,
-      }),
+      body: JSON.stringify(payload),
     });
 
+    console.log("📡 [DEBUG] Response status:", response.status);
+    console.log("📡 [DEBUG] Response headers:", {
+      "content-type": response.headers.get("content-type"),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
     const result = await response.json();
-    console.log("✅ Monitor registered:", result);
+    console.log("✅ Monitor registered successfully:", result);
+    return result;
   } catch (error) {
-    console.error("Monitor registration warning:", error);
-    // Don't fail - monitoring is optional
+    console.error("❌ Monitor registration error:", error);
+    console.error("   Error message:", error.message);
+    console.error("   Error stack:", error.stack);
+    // Don't fail plan creation - monitoring is optional for manual activation
   }
 }
 
@@ -420,91 +472,101 @@ function getIntervalSeconds() {
 /**
  * Show success screen with sharing options
  */
-function showSuccessScreen(planId, emiAmount) {
+function showSuccessScreen(planId, emiAmount, receiverAddress) {
   const state = WalletService.getConnectionState();
   const config = NetworkService.getNetworkConfig(state.chainId);
+
+  // Use passed address or fallback to state
+  const displayAddress = receiverAddress || state.address;
 
   // Show sections
   document.getElementById("directPaymentSection").style.display = "block";
   document.getElementById("shareSection").style.display = "block";
   document.getElementById("monitoringStatusSection").style.display = "block";
 
-  // Update success message
+  // ============================================================================
+  // SUCCESS MESSAGE - SHOW WALLET ADDRESS FOR DIRECT ETH TRANSFER
+  // ============================================================================
   document.getElementById("directPaymentSection").innerHTML = `
     <div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 24px; border-radius: 16px; text-align: center;">
       <h2>✅ EMI Plan #${planId} Created!</h2>
-      <p><strong>Share YOUR WALLET ADDRESS:</strong></p>
-      <div style="background: #1f2937; color: #f9fafb; padding: 16px; border-radius: 12px; word-break: break-all; font-family: monospace; margin: 16px 0; font-size: 14px;">
-        ${state.address}
+      
+      <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; margin: 20px 0;">
+        <p style="font-size: 14px; margin-bottom: 12px;"><strong>📝 SHARE THIS WALLET ADDRESS</strong></p>
+        <p style="font-size: 12px; color: #c5e4e8; margin-bottom: 16px;">
+          Share this wallet address with the sender. They can send ETH from ANY wallet (MetaMask, Trust Wallet, Binance, or any other wallet). No special page or app needed!
+        </p>
+        <div style="background: #1f2937; color: #f9fafb; padding: 16px; border-radius: 12px; word-break: break-all; font-family: monospace; margin: 16px 0; font-size: 13px;">
+          ${displayAddress}
+        </div>
       </div>
-      <p style="font-size: 14px;">
-        💡 Sender sends ANY ETH → Auto EMI payments start!
-      </p>
-      <button onclick="window.copyAddress('${state.address}')" style="background: white; color: #10b981; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-top: 12px; width: 100%; font-weight: bold;">
+
+      <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin: 16px 0; font-size: 13px;">
+        <strong>💡 How it works:</strong><br/>
+        ✅ Sender sends ETH to your wallet from ANY wallet<br/>
+        ✅ Our backend detects the transaction<br/>
+        ✅ EMI plan auto-activates instantly<br/>
+        ✅ Chainlink pulls EMI amounts automatically
+      </div>
+
+      <button onclick="window.copyAddress('${displayAddress}')" style="background: white; color: #10b981; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-top: 16px; width: 100%; font-weight: bold; font-size: 14px;">
         📋 Copy Wallet Address
       </button>
     </div>
   `;
 
-  // Generate share links
-  generateShareLinks(planId);
+  // Generate QR code for wallet address
+  generateShareLinks(planId, displayAddress);
 
-  // Start status monitoring
+  // Start status monitoring with receiver address
   if (appState.statusInterval) {
     clearInterval(appState.statusInterval);
   }
   appState.statusInterval = setInterval(
-    () => checkMonitoringStatus(planId),
+    () => checkMonitoringStatus(planId, displayAddress),
     5000,
+  );
+
+  console.log(
+    "✅ [PHASE 2] Waiting for sender to transfer ETH to:",
+    displayAddress,
   );
 }
 
 /**
- * Generate and display sharing links and QR codes
+ * Generate QR code for wallet address
+ * Sender can scan this to get the wallet address
  */
-async function generateShareLinks(planId) {
-  const state = WalletService.getConnectionState();
-  const config = NetworkService.getNetworkConfig(state.chainId);
+async function generateShareLinks(planId, receiverAddress) {
+  const displayAddress = receiverAddress;
 
-  // MetaMask deep link
-  const metamaskLink = `https://metamask.app.link/dapp/${window.location.host}/sender.html?planId=${planId}&chainId=${state.chainId}`;
-
-  // Trust Wallet deep link
-  const trustLink = `ethereum:${state.address}?value=0.01&text=EMI%20Payment%20Plan%20%23${planId}`;
-
-  // Set link outputs
-  const metamaskOutput = document.getElementById("metamaskLinkOutput");
-  const trustOutput = document.getElementById("trustwalletLinkOutput");
-
-  if (metamaskOutput) metamaskOutput.value = metamaskLink;
-  if (trustOutput) trustOutput.value = trustLink;
-
-  // Generate QR codes
+  // Generate QR code with wallet address
   try {
-    const qrMM = document.getElementById("qrCanvasMetamask");
-    const qrTrust = document.getElementById("qrCanvasTrust");
+    const qrCanvas = document.getElementById("qrCanvasMetamask");
 
-    if (qrMM) {
-      await QRCode.toCanvas(qrMM, metamaskLink, { width: 200 });
-    }
-    if (qrTrust) {
-      await QRCode.toCanvas(qrTrust, trustLink, { width: 200 });
+    if (qrCanvas) {
+      // QR code encodes the wallet address
+      await QRCode.toCanvas(qrCanvas, displayAddress, { width: 200 });
+      console.log("✅ QR code generated for wallet:", displayAddress);
     }
   } catch (error) {
-    console.error("QR generation failed:", error);
+    console.error("⚠️  QR generation failed:", error);
   }
 }
 
 /**
  * Check monitoring status and update UI
  */
-async function checkMonitoringStatus(planId) {
+async function checkMonitoringStatus(planId, receiverAddress) {
   try {
-    const state = WalletService.getConnectionState();
-    const statusUrl = `https://emi-monitor.vercel.app/status/${state.address}`;
+    const displayAddress =
+      receiverAddress || WalletService.getConnectionState().address;
+    const statusUrl = `https://emi-monitor.vercel.app/status/${displayAddress}`;
 
     const response = await fetch(statusUrl);
     const status = await response.json();
+
+    console.log("📡 Status check result:", status);
 
     // Update UI elements
     const statusBadge = document.getElementById("statusBadge");
@@ -516,14 +578,14 @@ async function checkMonitoringStatus(planId) {
         statusBadge.innerHTML = `✅ ACTIVE (Plan #${status.planId})`;
         statusBadge.style.color = "#10b981";
       } else {
-        statusBadge.innerHTML = "⏳ WAITING";
+        statusBadge.innerHTML = "⏳ WAITING FOR PAYMENT";
         statusBadge.style.color = "#ef4444";
       }
     }
 
     if (senderAddress) {
       if (status.sender) {
-        senderAddress.textContent = status.sender;
+        senderAddress.textContent = WalletService.formatAddress(status.sender);
         senderAddress.style.color = "#10b981";
       } else {
         senderAddress.textContent = "Not detected yet";
@@ -534,23 +596,36 @@ async function checkMonitoringStatus(planId) {
     if (statusMessage) {
       if (status.active && status.sender) {
         statusMessage.innerHTML = `
-          ✅ <strong>Plan activated!</strong> Chainlink Automation started. 
-          EMI payments will be pulled from sender ${status.sender} every interval.
+          ✅ <strong>Plan activated!</strong><br/>
+          Sender: ${WalletService.formatAddress(status.sender)}<br/>
+          Chainlink Automation started. EMI payments will be pulled automatically every interval.
         `;
         statusMessage.style.color = "#10b981";
+        statusMessage.style.backgroundColor = "#ecfdf5";
+        statusMessage.style.padding = "16px";
+        statusMessage.style.borderRadius = "8px";
       } else {
         statusMessage.innerHTML = `
-          ⏳ <strong>Waiting for first payment...</strong> 
-          Once sender transfers ETH to <span style="font-family: monospace;">${state.address}</span>, 
-          this plan will activate automatically.
+          ⏳ <strong>Waiting for sender to transfer ETH...</strong><br/>
+          <small style="color: #6b7280;">
+            Share your wallet address (<span style="font-family: monospace;">${displayAddress.slice(
+              0,
+              10,
+            )}...</span>) with the sender. 
+            Once they send any amount of ETH, your EMI plan will activate automatically.
+          </small>
         `;
         statusMessage.style.color = "#374151";
+        statusMessage.style.backgroundColor = "#f3f4f6";
+        statusMessage.style.padding = "16px";
+        statusMessage.style.borderRadius = "8px";
       }
     }
 
-    console.log("📡 Status:", status);
+    return status;
   } catch (error) {
-    console.error("Status check warning:", error);
+    console.error("⚠️  Status check warning:", error);
+    return null;
   }
 }
 

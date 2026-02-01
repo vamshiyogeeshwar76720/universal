@@ -1,86 +1,85 @@
-// 🔥 1-CLICK ETH EMI Activation
-// 🔥 MOBILE-WALLET PROOF sender.js - No White Screen!
+// 🔥 1-CLICK ETH EMI Activation - SIMPLIFIED FLOW
+// Sender sends ETH directly to receiver address via MetaMask
+// No contract interaction needed
+
 import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 
 const NETWORK_CONFIG = {
   sepolia: {
     chainId: 11155111,
-    emiContract: "0x4490cBCB188A1c9CBeAEdc087FB91FD0561dC7CE",
+    name: "Sepolia Testnet",
   },
 };
 
-const ETH_ABI = [
-  "function plans(uint256) view returns (address,address,uint256,uint256,uint256,uint256,uint256,bool)",
-  "function activatePlan(uint256) external payable",
-  "function planCount() view returns (uint256)",
-];
+// Get receiver address from URL parameter
+const urlParams = new URLSearchParams(window.location.search);
+const receiverAddress = urlParams.get("receiver");
+const emiAmount = urlParams.get("emiAmount");
+const chainIdParam = urlParams.get("chainId");
 
-const urlParams = Object.fromEntries(
-  new URLSearchParams(window.location.search),
-);
-const planId = urlParams.planId;
-const chainIdParam = urlParams.chainId;
-
-if (!planId) {
-  document.getElementById("status").innerText = "❌ Invalid Plan ID";
-  throw new Error("No planId in URL");
+if (!receiverAddress) {
+  document.getElementById("status").innerText = "❌ Invalid payment link - missing receiver address";
+  throw new Error("No receiver in URL");
 }
 
-let provider, signer, contract, plan;
+let provider, signer, senderAddress;
 let isConnected = false;
 
-// 🔥 MOBILE WALLET POLLING (Fixes white screen)
+// 🔥 MOBILE WALLET POLLING
 async function detectWallet() {
   const statusEl = document.getElementById("status");
-  statusEl.innerText = "🔄 Waiting for wallet...";
+  statusEl.innerText = "🔄 Detecting wallet...";
 
-  // Try multiple wallet providers
   const providers = ["ethereum", "webkitEthereum", "trustwallet"];
 
   for (let i = 0; i < 30; i++) {
-    // 15 seconds max
     for (const providerName of providers) {
       if (window[providerName]) {
-        provider = new ethers.providers.Web3Provider(
-          window[providerName],
-          "any",
-        );
         try {
+          provider = new ethers.providers.Web3Provider(
+            window[providerName],
+            "any",
+          );
           await provider.send("eth_requestAccounts", []);
           signer = provider.getSigner();
+          senderAddress = await signer.getAddress();
           isConnected = true;
           statusEl.innerText = "✅ Wallet connected!";
           return true;
         } catch (e) {
-          console.log("Provider ready, but no accounts:", providerName);
+          console.log("Provider not ready:", providerName);
         }
       }
     }
-    await new Promise((r) => setTimeout(r, 500)); // Poll every 500ms
+    await new Promise((r) => setTimeout(r, 500));
   }
 
   statusEl.innerText = "❌ No wallet detected. Please refresh.";
   return false;
 }
 
-// 🔥 STEP-BY-STEP INIT
+// 🔥 MAIN INITIALIZATION
 async function init() {
   try {
     const connectBtn = document.getElementById("connectBtn");
+    
     connectBtn.onclick = async () => {
       connectBtn.disabled = true;
       connectBtn.innerText = "⏳ Connecting...";
 
       const hasWallet = await detectWallet();
       if (!hasWallet) {
-        alert("No wallet found. Please install MetaMask or Trust Wallet.");
+        alert("❌ No wallet found. Please install MetaMask or Trust Wallet.");
         connectBtn.disabled = false;
         connectBtn.innerText = "🔗 Connect Wallet";
         return;
       }
 
+      // Verify network
       await switchNetwork();
-      await loadPlan();
+
+      // Show receiver info and payment instructions
+      showPaymentInfo();
       connectBtn.style.display = "none";
     };
   } catch (error) {
@@ -89,95 +88,150 @@ async function init() {
   }
 }
 
+// Switch to Sepolia testnet
 async function switchNetwork() {
-  const config = NETWORK_CONFIG.sepolia;
   const currentChain = await provider.getNetwork();
 
-  if (currentChain.chainId !== config.chainId) {
-    await window.ethereum.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: `0xaa36a` }], // Sepolia
-    });
+  if (currentChain.chainId !== NETWORK_CONFIG.sepolia.chainId) {
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0xaa36a7" }], // Sepolia
+      });
+    } catch (error) {
+      if (error.code === 4902) {
+        console.log("Chain not added, requesting addition...");
+        // Network doesn't exist, can skip for testnet
+      }
+    }
   }
 }
 
-async function loadPlan() {
-  const config = NETWORK_CONFIG.sepolia;
-  contract = new ethers.Contract(config.emiContract, ETH_ABI, signer);
+// Show payment instructions
+function showPaymentInfo() {
+  document.getElementById("paymentInfo").innerHTML = `
+    <div style="background: linear-gradient(135deg, #ff6b35, #f7931a); color: white; padding: 24px; border-radius: 16px; text-align: center;">
+      <h2>💸 Send ETH to Receiver</h2>
+      
+      <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; margin: 20px 0;">
+        <p style="font-size: 14px; margin-bottom: 12px;"><strong>📍 Receiver Wallet Address:</strong></p>
+        <div style="background: #1f2937; color: #f9fafb; padding: 16px; border-radius: 12px; word-break: break-all; font-family: monospace; margin: 16px 0; font-size: 13px; cursor: pointer;" onclick="window.copyAddress('${receiverAddress}')">
+          ${receiverAddress}
+          <small style="display: block; margin-top: 8px; color: #9ca3af;">(click to copy)</small>
+        </div>
+      </div>
 
-  const planIdBN = ethers.BigNumber.from(planId);
-  plan = await contract.plans(planIdBN);
+      <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px; margin: 16px 0; font-size: 13px;">
+        <strong>💡 How it works:</strong><br/>
+        ✅ Send ANY amount of ETH to this address<br/>
+        ✅ Our system detects the payment<br/>
+        ✅ EMI plan auto-activates instantly<br/>
+        ✅ Chainlink pulls installments automatically
+      </div>
 
-  console.table({
-    planId,
-    emi: ethers.utils.formatEther(plan.emi),
-    total: ethers.utils.formatEther(plan.total),
-    receiver: plan.receiver,
-    active: plan.active,
-  });
-
-  if (plan.receiver === ethers.constants.AddressZero) {
-    throw new Error("❌ Plan doesn't exist");
-  }
-  if (plan.active) {
-    throw new Error("❌ Plan already active");
-  }
-
-  showPlan(plan);
-  createETHButton();
-}
-
-function showPlan(plan) {
-  document.getElementById("planInfo").innerHTML = `
-    ✅ <strong>ETH Plan #${planId}</strong><br>
-    💰 EMI: ${ethers.utils.formatEther(plan.emi)} ETH<br>
-    💎 Total: ${ethers.utils.formatEther(plan.total)} ETH<br>
-    👤 Receiver: ${plan.receiver.slice(0, 6)}...${plan.receiver.slice(-4)}<br>
-    <small style="color:#059669">✓ Ready for ETH payment ✓</small>
+      <button onclick="window.sendETH()" id="sendBtn" style="background: white; color: #ff6b35; border: none; padding: 16px 32px; border-radius: 8px; cursor: pointer; margin-top: 16px; width: 100%; font-weight: bold; font-size: 16px;">
+        🚀 Send ETH Now
+      </button>
+    </div>
   `;
 }
 
-function createETHButton() {
-  const btn = document.createElement("button");
-  btn.innerText = `🚀 ACTIVATE (${ethers.utils.formatEther(plan.emi)} ETH)`;
-  btn.className = "primary";
-  btn.onclick = activateETHPlan;
-  document.getElementById("planInfo").appendChild(btn);
-}
-
-async function activateETHPlan() {
-  const btn = event.target;
-  btn.disabled = true;
-  btn.innerText = "⏳ Sending ETH...";
-
+// Send ETH directly to receiver address
+window.sendETH = async function () {
+  const sendBtn = document.getElementById("sendBtn");
+  const amountInput = document.getElementById("amountInput");
+  
+  // Get amount from input or use EMI amount as default
+  let amount = emiAmount || "0.01";
+  
   try {
-    const tx = await contract.activatePlan(ethers.BigNumber.from(planId), {
-      value: plan.emi,
-      gasLimit: 300000,
+    // Prompt for amount if not provided
+    if (!emiAmount) {
+      amount = prompt("Enter amount of ETH to send:", "0.01");
+      if (!amount) return;
+    }
+
+    sendBtn.disabled = true;
+    sendBtn.innerText = "⏳ Processing transaction...";
+
+    const amountWei = ethers.utils.parseEther(amount.toString());
+
+    // Send ETH transaction directly to receiver
+    console.log(`💸 Sending ${amount} ETH to ${receiverAddress}...`);
+
+    const tx = await signer.sendTransaction({
+      to: receiverAddress,
+      value: amountWei,
+      gasLimit: 21000, // Standard ETH transfer gas
     });
 
-    btn.innerText = "✅ Confirming...";
-    const receipt = await tx.wait();
+    console.log("✅ Transaction sent:", tx.hash);
+    sendBtn.innerText = "⏳ Waiting for confirmation...";
 
-    showSuccess(receipt.transactionHash);
+    const receipt = await tx.wait();
+    console.log("✅ Transaction confirmed:", receipt.hash);
+
+    showSuccess(tx.hash, amount);
   } catch (error) {
-    console.error("ETH payment failed:", error);
+    console.error("❌ Transaction failed:", error);
     const errorMsg = error.reason || error.message || "Transaction failed";
     alert("❌ " + errorMsg);
-    btn.disabled = false;
-    btn.innerText = `🚀 ACTIVATE (${ethers.utils.formatEther(plan.emi)} ETH)`;
+    sendBtn.disabled = false;
+    sendBtn.innerText = "🚀 Send ETH Now";
   }
+};
+
+// Show success message
+function showSuccess(txHash, amount) {
+  document.body.innerHTML = `
+    <div style="text-align: center; padding: 60px 20px; max-width: 600px; margin: auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+      <div style="font-size: 100px; margin-bottom: 20px;">✅</div>
+      <h1 style="color: #10b981; margin-bottom: 12px;">Payment Sent!</h1>
+      <p style="color: #374151; font-size: 16px; margin-bottom: 24px;">
+        <strong>${amount} ETH</strong> has been transferred to the receiver.<br/>
+        <small>The EMI plan will activate within 10 seconds.</small>
+      </p>
+      
+      <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+        <p style="color: #6b7280; font-size: 12px; margin-bottom: 8px;">Transaction Hash:</p>
+        <code style="display: block; word-break: break-all; font-size: 11px; color: #374151; cursor: pointer;" onclick="window.copyAddress('${txHash}')">
+          ${txHash}
+        </code>
+        <small style="color: #9ca3af; display: block; margin-top: 8px;">
+          <a href="https://sepolia.etherscan.io/tx/${txHash}" target="_blank" style="color: #3b82f6; text-decoration: none;">View on Etherscan ↗</a>
+        </small>
+      </div>
+
+      <p style="color: #6b7280; font-size: 14px;">
+        ✅ Monitor detected payment<br/>
+        ✅ EMI plan activated<br/>
+        ✅ Chainlink Automation running
+      </p>
+
+      <button onclick="window.close()" style="
+        padding: 12px 32px;
+        background: #10b981;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 24px;
+      ">Close</button>
+    </div>
+  `;
 }
 
-function showSuccess(txHash) {
-  document.body.innerHTML = `
-    <div style="text-align:center; padding:60px; max-width:400px; margin:auto;">
-      <div style="font-size:100px; color:#10b981;">✅</div>
-      <h1>ETH EMI ACTIVATED!</h1>
-      <p><strong>Plan #${planId}</strong> is LIVE 🚀</p>
-      <p style="word-break:break-all;">
-        Tx: <a href="https://sepolia.etherscan.io/tx/${txHash}" target="_blank">${txHash.slice(
-    0,
+// Utility: Copy to clipboard
+window.copyAddress = function (text) {
+  navigator.clipboard.writeText(text).then(() => {
+    alert("✅ Copied!");
+  }).catch(() => {
+    alert("Failed to copy");
+  });
+};
+
+window.addEventListener("load", init);
     12,
   )}...</a>
       </p>

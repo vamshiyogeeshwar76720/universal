@@ -1,9 +1,9 @@
-<!-- raw bytes with ETH -->
+<!-- EMI Auto-Payment System - Sender Payment Page -->
 <!DOCTYPE html>
 <html>
 
 <head>
-    <title>ETH EMI Plan</title>
+    <title>Send ETH - EMI Payment</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
@@ -15,69 +15,180 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            max-width: 500px;
+            max-width: 600px;
             margin: 0 auto;
             padding: 20px;
             min-height: 100vh;
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            background: linear-gradient(135deg, #fff5e6 0%, #ffe0cc 100%);
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+
+        #status {
             text-align: center;
-        }
-
-        h2 {
-            color: #0c4a6e;
-            margin: 30px 0 20px 0;
-            font-size: 28px;
-            font-weight: 700;
-        }
-
-        #planInfo {
-            background: linear-gradient(135deg, #10b98115, #05966915);
-            padding: 30px;
-            border-radius: 20px;
-            margin: 20px 0;
-            border: 3px solid #10b981;
-            box-shadow: 0 12px 40px rgba(16, 185, 129, 0.2);
-        }
-
-        .emi-amount {
-            font-size: 36px;
-            font-weight: 800;
-            color: #059669;
-            margin: 20px 0;
-            text-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
-        }
-
-        .receiver {
             color: #374151;
-            font-size: 14px;
-            margin: 10px 0;
-        }
-
-        .status {
-            background: #fef3c7;
-            color: #92400e;
-            padding: 12px;
-            border-radius: 12px;
-            margin: 20px 0;
-            font-weight: 600;
-        }
-
-        .info-box {
-            background: #ecfdf5;
-            border-left: 4px solid #10b981;
+            font-size: 16px;
+            margin-bottom: 24px;
             padding: 16px;
-            margin: 20px 0;
+            background: #f3f4f6;
             border-radius: 8px;
-            text-align: left;
-            font-size: 14px;
+            min-height: 24px;
+        }
+
+        #connectBtn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #ff6b35, #f7931a);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #connectBtn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(255, 107, 53, 0.3);
+        }
+
+        #connectBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #paymentInfo {
+            margin-top: 24px;
+        }
+
+        #sendBtn {
+            width: 100%;
+            padding: 16px;
+            margin-top: 16px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #sendBtn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+        }
+
+        #sendBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
         @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+
             body {
-                padding: 16px;
+                padding: 12px;
             }
         }
     </style>
+</head>
+
+<body>
+    <div class="container">
+        <div id="status">🔄 Initializing...</div>
+
+        <button id="connectBtn">🔗 Connect Wallet</button>
+
+        <div id="paymentInfo"></div>
+
+        <input id="amountInput" type="hidden" />
+    </div>
+
+    <script type="module" src="./sender.js"></script>
+</body>
+
+</html>
+* {
+box-sizing: border-box;
+margin: 0;
+padding: 0;
+}
+
+body {
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+max-width: 500px;
+margin: 0 auto;
+padding: 20px;
+min-height: 100vh;
+background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+text-align: center;
+}
+
+h2 {
+color: #0c4a6e;
+margin: 30px 0 20px 0;
+font-size: 28px;
+font-weight: 700;
+}
+
+#planInfo {
+background: linear-gradient(135deg, #10b98115, #05966915);
+padding: 30px;
+border-radius: 20px;
+margin: 20px 0;
+border: 3px solid #10b981;
+box-shadow: 0 12px 40px rgba(16, 185, 129, 0.2);
+}
+
+.emi-amount {
+font-size: 36px;
+font-weight: 800;
+color: #059669;
+margin: 20px 0;
+text-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.receiver {
+color: #374151;
+font-size: 14px;
+margin: 10px 0;
+}
+
+.status {
+background: #fef3c7;
+color: #92400e;
+padding: 12px;
+border-radius: 12px;
+margin: 20px 0;
+font-weight: 600;
+}
+
+.info-box {
+background: #ecfdf5;
+border-left: 4px solid #10b981;
+padding: 16px;
+margin: 20px 0;
+border-radius: 8px;
+text-align: left;
+font-size: 14px;
+}
+
+@media (max-width: 480px) {
+body {
+padding: 16px;
+}
+}
+</style>
 </head>
 
 <body>
