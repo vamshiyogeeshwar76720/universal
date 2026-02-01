@@ -5,7 +5,7 @@ import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 const NETWORK_CONFIG = {
   sepolia: {
     chainId: 11155111,
-    emiContract: "0x0955125fe05Bf65E642EB95a1704806Dcb79CACb",
+    emiContract: "0x4490cBCB188A1c9CBeAEdc087FB91FD0561dC7CE",
   },
 };
 

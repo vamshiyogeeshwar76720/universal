@@ -34,6 +34,15 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         uint256 amount
     );
 
+    // 🔥 EVENT FOR MONITOR SERVICE: Detects incoming payments via RPC event logs
+    event DirectPaymentReceived(
+        uint256 indexed planId,
+        address indexed receiver,
+        address indexed sender,
+        uint256 amount,
+        uint256 timestamp
+    );
+
     constructor() {
         admin = msg.sender;
     }
@@ -102,6 +111,15 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         p.paid += msg.value;
         p.receiver.transfer(msg.value);
         emit EmiPaid(planId, msg.value);
+
+        // 🔥 EMIT EVENT for monitor service to detect payment via event logs
+        emit DirectPaymentReceived(
+            planId,
+            p.receiver,
+            msg.sender,
+            msg.value,
+            block.timestamp
+        );
 
         p.active = true;
         p.nextPay = block.timestamp + p.interval;
