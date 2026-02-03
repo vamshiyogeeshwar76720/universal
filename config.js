@@ -16,14 +16,14 @@ const CHAINS = {
     testnet: {
       name: "Sepolia",
       chainId: 11155111,
-      rpc: "https://sepolia.infura.io/v3/195a87fa71be40848fc02cdf4242d12c",
-      emiContract: "0xc2f7b1ddDa240ab9907C478970632D77b415F02C",
+      rpc: "https://eth-sepolia.g.alchemy.com/v2/dtkomuYIPcPjosX9YuBSL",
+      emiContract: "0x34Ec000b58547d52821216831bf88E085DFD715C",
     },
 
     mainnet: {
       name: "Mainnet",
       chainId: 1,
-      rpc: "https://mainnet.infura.io/v3/195a87fa71be40848fc02cdf4242d12c",
+      rpc: "https://eth-mainnet.g.alchemy.com/v2/dtkomuYIPcPjosX9YuBSL",
       emiContract: "0x7BAA6f2fFc568F1114A392557Bc3bCDe609bb795",
     },
 
