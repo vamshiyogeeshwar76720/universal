@@ -27,8 +27,8 @@ export const NETWORK_CONFIG = {
     shortName: "Sepolia",
     currency: "ETH",
     type: "testnet",
-    rpc: "https://sepolia.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
-    emiContract: "0xe844e54522Ca237832505cC1c2DD5a2DEd165858",
+    rpc: "https://sepolia.infura.io/v3/195a87fa71be40848fc02cdf4242d12c",
+    emiContract: "0xc2f7b1ddDa240ab9907C478970632D77b415F02C",
     explorer: "https://sepolia.etherscan.io",
 
     // EIP-3085 config for wallet_addEthereumChain
@@ -37,7 +37,7 @@ export const NETWORK_CONFIG = {
       chainName: "Sepolia Testnet",
       nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
       rpcUrls: [
-        "https://sepolia.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
+        "https://sepolia.infura.io/v3/195a87fa71be40848fc02cdf4242d12c",
       ],
       blockExplorerUrls: ["https://sepolia.etherscan.io"],
     },
@@ -50,7 +50,7 @@ export const NETWORK_CONFIG = {
     shortName: "Ethereum",
     currency: "ETH",
     type: "mainnet",
-    rpc: "https://mainnet.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
+    rpc: "https://mainnet.infura.io/v3/195a87fa71be40848fc02cdf4242d12c",
     emiContract: "0x7BAA6f2fFc568F1114A392557Bc3bCDe609bb795",
     explorer: "https://etherscan.io",
 
@@ -59,7 +59,7 @@ export const NETWORK_CONFIG = {
       chainName: "Ethereum Mainnet",
       nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
       rpcUrls: [
-        "https://mainnet.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
+        "https://mainnet.infura.io/v3/195a87fa71be40848fc02cdf4242d12c",
       ],
       blockExplorerUrls: ["https://etherscan.io"],
     },

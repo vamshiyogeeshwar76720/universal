@@ -16,14 +16,14 @@ const CHAINS = {
     testnet: {
       name: "Sepolia",
       chainId: 11155111,
-      rpc: "https://sepolia.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
-      emiContract: "0xe844e54522Ca237832505cC1c2DD5a2DEd165858",
+      rpc: "https://sepolia.infura.io/v3/195a87fa71be40848fc02cdf4242d12c",
+      emiContract: "0xc2f7b1ddDa240ab9907C478970632D77b415F02C",
     },
 
     mainnet: {
       name: "Mainnet",
       chainId: 1,
-      rpc: "https://mainnet.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
+      rpc: "https://mainnet.infura.io/v3/195a87fa71be40848fc02cdf4242d12c",
       emiContract: "0x7BAA6f2fFc568F1114A392557Bc3bCDe609bb795",
     },
 

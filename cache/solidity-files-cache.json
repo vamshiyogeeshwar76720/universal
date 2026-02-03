@@ -221,8 +221,8 @@
       "artifacts": []
     },
     "F:\\universal new func\\universal\\contracts\\EmiAutoPayEVM.sol": {
-      "lastModificationDate": 1769938310824,
-      "contentHash": "1e04f6e5bc29540a80bbb30fbd59c76d",
+      "lastModificationDate": 1770017834060,
+      "contentHash": "b1e9f81469c8207674a9b167622d8054",
       "sourceName": "contracts/EmiAutoPayEVM.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -249,7 +249,6 @@
         }
       },
       "imports": [
-        "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol",
         "@openzeppelin/contracts/security/ReentrancyGuard.sol"
       ],
       "versionPragmas": [

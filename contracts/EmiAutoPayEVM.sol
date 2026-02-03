@@ -2,10 +2,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
+contract EmiAutoPayEVM is ReentrancyGuard {
     struct Plan {
         address payable sender;
         address payable receiver;
@@ -15,13 +14,13 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         uint256 paid;
         uint256 nextPay;
         bool active;
-        bool paymentReceived; // 🔥 NEW: Track initial payment
+        bool paymentReceived;
     }
 
     uint256 public planCount;
     mapping(uint256 => Plan) public plans;
-    mapping(address => uint256) public pendingPlanId; // Receiver → PlanId
-    address public admin; // Off-chain monitor
+    mapping(address => uint256) public pendingPlanId;
+    address public admin;
 
     event PlanCreated(uint256 indexed planId);
     event PlanActivated(uint256 indexed planId, address indexed sender);
@@ -33,8 +32,6 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         address indexed sender,
         uint256 amount
     );
-
-    // 🔥 EVENT FOR MONITOR SERVICE: Detects incoming payments via RPC event logs
     event DirectPaymentReceived(
         uint256 indexed planId,
         address indexed receiver,
@@ -72,7 +69,6 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         emit PlanCreated(planCount);
     }
 
-    // 🔥 LINK: Receiver links their WALLET for monitoring
     function linkPlanToDirectPayment(uint256 planId) external {
         require(planId > 0 && planId <= planCount, "Invalid plan ID");
         Plan storage p = plans[planId];
@@ -83,7 +79,6 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         emit PlanLinked(planId, msg.sender);
     }
 
-    // 🔥 OFF-CHAIN MONITOR: Activate when payment detected
     function activatePlanRaw(
         uint256 planId,
         address sender
@@ -100,7 +95,6 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         emit PlanActivated(planId, sender);
     }
 
-    // Manual activation (QR code method - unchanged)
     function activatePlan(uint256 planId) external payable nonReentrant {
         Plan storage p = plans[planId];
         require(p.receiver != address(0), "Invalid plan");
@@ -111,8 +105,6 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         p.paid += msg.value;
         p.receiver.transfer(msg.value);
         emit EmiPaid(planId, msg.value);
-
-        // 🔥 EMIT EVENT for monitor service to detect payment via event logs
         emit DirectPaymentReceived(
             planId,
             p.receiver,
@@ -126,34 +118,19 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         emit PlanActivated(planId, msg.sender);
     }
 
-    function checkUpkeep(
-        bytes calldata
-    )
-        external
-        view
-        override
-        returns (bool upkeepNeeded, bytes memory performData)
-    {
-        if (planCount == 0) return (false, "");
-        for (uint256 i = 1; i <= planCount; i++) {
-            Plan storage p = plans[i];
-            if (p.active && p.paid < p.total && block.timestamp >= p.nextPay) {
-                return (true, abi.encode(i));
-            }
-        }
-        return (false, "");
-    }
-
-    function performUpkeep(bytes calldata data) external override nonReentrant {
-        if (data.length == 0) return;
-        uint256 planId = abi.decode(data, (uint256));
+    // 🔥 NEW: CRON JOB FUNCTION (Replaces Chainlink performUpkeep)
+    function collectPayment(uint256 planId) external onlyAdmin nonReentrant {
         Plan storage p = plans[planId];
-        require(p.active, "Inactive");
+        require(p.active, "Plan not active");
+        require(block.timestamp >= p.nextPay, "Not due yet");
+        require(p.paid < p.total, "Plan completed");
 
+        // Pull EMI from sender to receiver
         (bool success, ) = p.sender.call{value: p.emi}("");
         require(success, "ETH transfer failed");
 
         p.paid += p.emi;
+
         if (p.paid >= p.total) {
             p.active = false;
             emit EmiCompleted(planId);
@@ -163,7 +140,6 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         }
     }
 
-    // Admin functions
     function setAdmin(address newAdmin) external {
         require(msg.sender == admin, "Only admin");
         admin = newAdmin;

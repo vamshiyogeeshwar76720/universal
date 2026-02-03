@@ -395,7 +395,7 @@ async function registerMonitoring(planId, receiverAddress) {
     const state = WalletService.getConnectionState();
     const config = NetworkService.getNetworkConfig(state.chainId);
 
-    const monitorUrl = "https://emi-monitor.vercel.app";
+    const monitorUrl = "https://emi-monitor-production.up.railway.app";
     const payload = {
       planId: planId.toString(),
       receiver: receiverAddress || state.address,
@@ -561,7 +561,7 @@ async function checkMonitoringStatus(planId, receiverAddress) {
   try {
     const displayAddress =
       receiverAddress || WalletService.getConnectionState().address;
-    const statusUrl = `https://emi-monitor.vercel.app/status/${displayAddress}`;
+    const statusUrl = `https://emi-monitor-production.up.railway.app/status/${displayAddress}`;
 
     const response = await fetch(statusUrl);
     const status = await response.json();
