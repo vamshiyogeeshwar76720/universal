@@ -2,7 +2,7 @@
 // =====================================================
 // Global Environment
 // =====================================================
-const ENV = "mainnet"; // "testnet" | "mainnet"
+const ENV = "testnet"; // "testnet" | "mainnet"
 
 // =====================================================
 // Chain Configuration
@@ -17,7 +17,7 @@ const CHAINS = {
       name: "Sepolia",
       chainId: 11155111,
       rpc: "https://sepolia.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
-      emiContract: "0x8A03d44262707E8053af99fB57032F0B25661E3e",
+      emiContract: "0x6beEf13CE9141dDceE0b7a0305D74Ea1777971fE",
     },
 
     mainnet: {
@@ -32,7 +32,7 @@ const CHAINS = {
         decimals: 6,
         permit: false,
         addresses: {
-          testnet: "0xc0a384bCB02bA86FA2e7Cd91eB7693C0b90C4961",
+          testnet: "0x4Ac2d875bae33Fc34Af622d790f55f60639Ee0B2",
           mainnet: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
         },
       },
