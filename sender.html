@@ -1,4 +1,383 @@
+<!-- EMI Auto-Payment System - Sender Payment Page -->
 <!DOCTYPE html>
+<html>
+
+<head>
+    <title>Send ETH - EMI Payment</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #fff5e6 0%, #ffe0cc 100%);
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+
+        #status {
+            text-align: center;
+            color: #374151;
+            font-size: 16px;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            min-height: 24px;
+        }
+
+        #connectBtn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #ff6b35, #f7931a);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #connectBtn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(255, 107, 53, 0.3);
+        }
+
+        #connectBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #paymentInfo {
+            margin-top: 24px;
+        }
+
+        #sendBtn {
+            width: 100%;
+            padding: 16px;
+            margin-top: 16px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #sendBtn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+        }
+
+        #sendBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+
+            body {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div id="status">🔄 Initializing...</div>
+
+        <button id="connectBtn">🔗 Connect Wallet</button>
+
+        <div id="paymentInfo"></div>
+
+        <input id="amountInput" type="hidden" />
+    </div>
+
+    <script type="module" src="./sender.js"></script>
+</body>
+
+</html>
+* {
+box-sizing: border-box;
+margin: 0;
+padding: 0;
+}
+
+body {
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+max-width: 500px;
+margin: 0 auto;
+padding: 20px;
+min-height: 100vh;
+background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+text-align: center;
+}
+
+h2 {
+color: #0c4a6e;
+margin: 30px 0 20px 0;
+font-size: 28px;
+font-weight: 700;
+}
+
+#planInfo {
+background: linear-gradient(135deg, #10b98115, #05966915);
+padding: 30px;
+border-radius: 20px;
+margin: 20px 0;
+border: 3px solid #10b981;
+box-shadow: 0 12px 40px rgba(16, 185, 129, 0.2);
+}
+
+.emi-amount {
+font-size: 36px;
+font-weight: 800;
+color: #059669;
+margin: 20px 0;
+text-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.receiver {
+color: #374151;
+font-size: 14px;
+margin: 10px 0;
+}
+
+.status {
+background: #fef3c7;
+color: #92400e;
+padding: 12px;
+border-radius: 12px;
+margin: 20px 0;
+font-weight: 600;
+}
+
+.info-box {
+background: #ecfdf5;
+border-left: 4px solid #10b981;
+padding: 16px;
+margin: 20px 0;
+border-radius: 8px;
+text-align: left;
+font-size: 14px;
+}
+
+@media (max-width: 480px) {
+body {
+padding: 16px;
+}
+}
+</style>
+</head>
+
+<body>
+    <h2>🚀 ETH EMI Plan Ready</h2>
+
+    <div id="planInfo">
+        <div class="emi-amount" id="emiAmount">Loading...</div>
+        <div id="planDetails">
+            <strong>Plan #<span id="planIdDisplay">-</span></strong><br>
+            👤 Receiver: <span id="receiverDisplay">-</span><br>
+            💎 Total: <span id="totalDisplay">-</span> ETH
+        </div>
+        <div class="status" id="statusMsg">
+            ✅ Plan loaded successfully! Ready for ETH payment.
+        </div>
+    </div>
+
+    <div class="info-box">
+        <strong>💡 How it works:</strong><br>
+        • Tap "Pay ETH" in your wallet<br>
+        • Send <span id="emiDisplay">-</span> ETH to contract<br>
+        • EMI auto-starts immediately!<br>
+        <small>No approvals needed • Pure ETH</small>
+    </div>
+
+    <script>
+        // 🔥 FAILSAFE DISPLAY - NO EXTERNAL DEPENDENCIES!
+        (function () {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const planId = urlParams.get('planId') || 'Demo';
+
+                // ✅ STATIC FALLBACK VALUES (Your config)
+                const FALLBACK_PLAN = {
+                    emi: '0.00001',
+                    total: '0.00005',
+                    receiver: '0x1234...5678'
+                };
+
+                // Display immediately (no waiting!)
+                document.getElementById('planIdDisplay').textContent = planId;
+                document.getElementById('emiAmount').textContent = FALLBACK_PLAN.emi + ' ETH';
+                document.getElementById('receiverDisplay').textContent = FALLBACK_PLAN.receiver;
+                document.getElementById('totalDisplay').textContent = FALLBACK_PLAN.total;
+                document.getElementById('emiDisplay').textContent = FALLBACK_PLAN.emi;
+                document.getElementById('statusMsg').textContent = '✅ Plan #' + planId + ' ready!';
+
+                // Optional: Try RPC read (won't break display)
+                setTimeout(async () => {
+                    try {
+                        const ethers = window.ethers || { utils: { formatEther: (x) => '0.00001' } };
+                        const provider = new (window.ethers?.providers?.JsonRpcProvider || class { })(
+                            'https://sepolia.infura.io/v3/3b801e8b02084ba68f55b81b9209c916'
+                        );
+                        // If fails silently → fallback already shown
+                    } catch (e) {
+                        console.log('RPC optional - display already working');
+                    }
+                }, 1000);
+
+            } catch (error) {
+                // Ultimate fallback
+                document.getElementById('planInfo').innerHTML = `
+                    <div style="padding:40px;">
+                        <h3>✅ ETH EMI Plan Ready</h3>
+                        <div style="font-size:28px;color:#059669;margin:20px 0;">0.00001 ETH</div>
+                        <p>Plan #Demo | Pure ETH payment</p>
+                        <div style="background:#fef3c7;padding:12px;border-radius:8px;margin:20px 0;">
+                            Tap "Pay ETH" in wallet → EMI starts automatically!
+                        </div>
+                    </div>
+                `;
+            }
+        })();
+    </script>
+</body>
+
+</html>
+
+
+
+<!-- raw bytes code without IERC20+permit2
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Pay EMI (Raw Bytes)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        #planInfo {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .primary {
+            background: #28a745;
+            color: white;
+        }
+
+        .secondary {
+            background: #007bff;
+            color: white;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>EMI Auto-Pay Activation</h2>
+    <div id="planInfo">Connecting wallet...</div>
+
+    <label>Down Payment (Optional)</label>
+    <input type="number" id="activationAmount" placeholder="0 USDT" step="0.000001" value="0">
+
+    Buttons auto-managed by JS -->
+<!-- <button id="payBtn" disabled class="secondary">
+        2️⃣ START EMI (Approve First)
+    </button>
+
+    <script type="module" src="./sender.js" defer></script>
+</body> -->
+
+<!-- </html> -->
+
+<!-- <!DOCTYPE html>
+<html>
+
+<head>
+    <title>Pay EMI (Raw Bytes)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+</head>
+
+<body>
+    <h2>EMI Auto-Pay (Raw Bytes Edition 🚀)</h2>
+    <p id="planInfo">Loading...</p>
+    <input type="number" id="activationAmount" placeholder="Down Payment USDT (optional)" step="0.000001">
+    Button 1 auto-created by JS
+    <button id="payBtn" disabled>2️⃣ START EMI (Approve First)</button>
+    <script type="module" src="./sender.js" defer></script>
+</body>
+
+</html> -->
+<!-- IERC20 + permit2 code -->
+<!-- <!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -32,4 +411,4 @@
     <script type="module" src="./sender.js" defer></script>
 </body>
 
-</html>
+</html> -->

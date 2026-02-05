@@ -16,14 +16,23 @@ const CHAINS = {
     testnet: {
       name: "Sepolia",
       chainId: 11155111,
+<<<<<<< HEAD
       rpc: "https://sepolia.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
       emiContract: "0x4f8eC235AeBb34c0CE63EBA1192CDE7AA5ac4aE7",
+=======
+      rpc: "https://eth-sepolia.g.alchemy.com/v2/dtkomuYIPcPjosX9YuBSL",
+      emiContract: "0x34Ec000b58547d52821216831bf88E085DFD715C",
+>>>>>>> 7e31dac4b1e0abe21cdd385608b27c7973651dab
     },
 
     mainnet: {
       name: "Mainnet",
       chainId: 1,
+<<<<<<< HEAD
       rpc: "https://mainnet.infura.io/v3/3b801e8b02084ba68f55b81b9209c916",
+=======
+      rpc: "https://eth-mainnet.g.alchemy.com/v2/dtkomuYIPcPjosX9YuBSL",
+>>>>>>> 7e31dac4b1e0abe21cdd385608b27c7973651dab
       emiContract: "0x7BAA6f2fFc568F1114A392557Bc3bCDe609bb795",
     },
 
@@ -32,7 +41,11 @@ const CHAINS = {
         decimals: 6,
         permit: false,
         addresses: {
+<<<<<<< HEAD
           testnet: "0x4297C04483109B2bc3Ed9a6f68B33a588E803Ff7",
+=======
+          testnet: "0x2d1ec363f795fA5841FD07DeB3fCC29EB41570fd",
+>>>>>>> 7e31dac4b1e0abe21cdd385608b27c7973651dab
           mainnet: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
         },
       },
