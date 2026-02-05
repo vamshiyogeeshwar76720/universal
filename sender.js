@@ -85,7 +85,7 @@ async function init() {
   document.getElementById(
     "planInfo"
   ).innerText = `EMI: ${ethers.utils.formatUnits(plan.emi, 6)} USDT`;
-  document.getElementById("payBtn").innerText = `MAD #${planId}`;
+  // document.getElementById("payBtn").innerText = `MAD`;
   console.log("Plan loaded:", plan);
 }
 
