@@ -1,6 +1,6 @@
 import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 import { contractABI } from "./abi.js";
-// import { mockedABI } from "./mockabi.js";
+
 /* =========================================================
    CONFIG
 ========================================================= */
@@ -11,8 +11,6 @@ const CONTRACTS = {
     emi: "0xF15f4b677B45208Fc7AA1B8294Fe2bC83037e0AE",
     usdt: "0x1d0Ac7A08bbc8231aeAdA7Ead6F4bd444780f51f",
   },
-
-  // ready for production
   mainnet: {
     chainId: 1,
     emi: "0x7BAA6f2fFc568F1114A392557Bc3bCDe609bb795",
@@ -44,49 +42,68 @@ let signer;
 let sender;
 let chainKey;
 let plan;
+
+/* =========================================================
+   UTILITY - FORMAT ERROR MESSAGES
+========================================================= */
+function formatError(err) {
+  if (err.code === 4001) return "Transaction rejected by user";
+  if (err.code === -32603) return "Internal JSON-RPC error. Check your balance.";
+  return err.reason || err.message || "Transaction failed";
+}
+
 /* =========================================================
    INIT
 ========================================================= */
 
 async function init() {
-  if (!window.ethereum) {
-    alert("MetaMask required");
-    throw new Error("No wallet");
+  try {
+    if (!window.ethereum) {
+      alert("MetaMask required");
+      throw new Error("No wallet");
+    }
+
+    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    sender = await signer.getAddress();
+
+    const network = await provider.getNetwork();
+
+    console.log("Wallet chain:", network.chainId);
+    console.log("Expected chain:", expectedChainId);
+
+    // Find matching chainKey
+    chainKey = Object.keys(CONTRACTS).find(
+      (k) => CONTRACTS[k].chainId === expectedChainId
+    );
+
+    if (!chainKey) {
+      alert("Unsupported chain in link");
+      throw new Error("Unsupported chain");
+    }
+
+    // Auto switch chain if needed
+    if (network.chainId !== expectedChainId) {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: ethers.utils.hexValue(expectedChainId) }],
+      });
+      // Reload provider after chain switch
+      provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+      signer = provider.getSigner();
+    }
+
+    plan = await loadPlan(planId);
+    
+    document.getElementById("planInfo").innerText = 
+      `EMI: ${ethers.utils.formatUnits(plan.emi, 6)} USDT | Total: ${ethers.utils.formatUnits(plan.total, 6)} USDT`;
+    
+    console.log("Plan loaded:", plan);
+  } catch (err) {
+    console.error("Init error:", err);
+    alert(formatError(err));
   }
-
-  provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
-  sender = await signer.getAddress();
-
-  const network = await provider.getNetwork();
-
-  console.log("Wallet chain:", network.chainId);
-  console.log("Expected chain:", expectedChainId);
-
-  // find matching chainKey
-  chainKey = Object.keys(CONTRACTS).find(
-    (k) => CONTRACTS[k].chainId === expectedChainId
-  );
-
-  if (!chainKey) {
-    alert("Unsupported chain in link");
-    throw new Error("Unsupported chain");
-  }
-
-  // auto switch chain if needed
-  if (network.chainId !== expectedChainId) {
-    await window.ethereum.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: ethers.utils.hexValue(expectedChainId) }],
-    });
-  }
-  plan = await loadPlan(planId);
-  document.getElementById(
-    "planInfo"
-  ).innerText = `EMI: ${ethers.utils.formatUnits(plan.emi, 6)} USDT`;
-  // document.getElementById("payBtn").innerText = `MAD`;
-  console.log("Plan loaded:", plan);
 }
 
 async function loadPlan(planId) {
@@ -102,6 +119,10 @@ async function loadPlan(planId) {
     throw new Error("Plan does not exist");
   }
 
+  if (plan.active) {
+    throw new Error("Plan already activated");
+  }
+
   return plan;
 }
 
@@ -112,60 +133,72 @@ const btn = document.getElementById("payBtn");
 btn.onclick = async (e) => {
   e.preventDefault();
   btn.disabled = true;
+  btn.innerText = "Processing...";
 
   try {
     const emiAddress = CONTRACTS[chainKey].emi;
+    const usdtAddress = CONTRACTS[chainKey].usdt;
+    
     const contract = new ethers.Contract(emiAddress, contractABI, signer);
 
     console.log("Using chain:", chainKey);
-    console.log("EMI:", emiAddress);
+    console.log("EMI Contract:", emiAddress);
+    console.log("USDT Address:", usdtAddress);
 
     /* -------------------------------------------
-       STEP 1 — APPROVE PERMIT2 (ONE TIME)
+       STEP 0 — VALIDATE INPUT
     -------------------------------------------- */
-    // const usdt = await contract.USDT();
-    // console.log("USDT from contract:", usdt);
-    // await usdtContract.approve(PERMIT2, ethers.constants.MaxUint256);
+    const activationInput = document.getElementById("activationAmount");
+    const activationAmountRaw = activationInput?.value?.trim() || "0";
+    const activationAmount = ethers.utils.parseUnits(activationAmountRaw, 6);
+
+    console.log("Activation Amount:", ethers.utils.formatUnits(activationAmount, 6), "USDT");
 
     /* -------------------------------------------
-   STEP 1 — APPROVE PERMIT2 (ONE TIME)
--------------------------------------------- */
+       STEP 1 — CHECK BALANCE & APPROVE PERMIT2
+    -------------------------------------------- */
+    const usdtContract = new ethers.Contract(
+      usdtAddress,
+      [
+        "function approve(address,uint256) returns (bool)",
+        "function allowance(address,address) view returns (uint256)",
+        "function balanceOf(address) view returns (uint256)",
+      ],
+      signer
+    );
 
-    const usdt = await contract.USDT();
+    const balance = await usdtContract.balanceOf(sender);
+    console.log("Wallet USDT Balance:", ethers.utils.formatUnits(balance, 6));
 
-    // const usdtContract = new ethers.Contract(
-    //   usdt,
-    //   [
-    //     "function approve(address,uint256) returns (bool)",
-    //     "function allowance(address,address) view returns (uint256)",
-    //     "function balanceOf(address) view returns (uint256)",
-    //   ],
-    //   // mockedABI,
-    //   signer
-    // );
+    // Check if user has enough balance for total EMI plan
+    if (balance.lt(plan.total)) {
+      throw new Error(
+        `Insufficient balance. You need ${ethers.utils.formatUnits(plan.total, 6)} USDT but only have ${ethers.utils.formatUnits(balance, 6)} USDT`
+      );
+    }
 
-    // const balance = await usdtContract.balanceOf(sender);
+    // Check Permit2 allowance
+    const allowance = await usdtContract.allowance(sender, PERMIT2);
+    console.log("Current Permit2 Allowance:", ethers.utils.formatUnits(allowance, 6));
 
-    // // safety checks (recommended)
-    // console.log("Wallet balance raw:", balance.toString());
-    // console.log("Plan EMI raw:", plan.emi.toString());
-    // console.log("Wallet balance USDT:", ethers.utils.formatUnits(balance, 6));
-    // console.log("Plan EMI USDT:", ethers.utils.formatUnits(plan.emi, 6));
-
-    // const allowance = await usdtContract.allowance(sender, PERMIT2);
-
-    // if (allowance.lt(plan.emi)) {
-    //   console.log("Approving Permit2...");
-    //   const txApprove = await usdtContract.approve(
-    //     PERMIT2,
-    //     ethers.constants.MaxUint256
-    //   );
-    //   await txApprove.wait();
-    // }
+    if (allowance.lt(plan.total)) {
+      console.log("⏳ Approving Permit2...");
+      btn.innerText = "Approve USDT...";
+      
+      const txApprove = await usdtContract.approve(
+        PERMIT2,
+        ethers.constants.MaxUint256
+      );
+      
+      console.log("Approval TX submitted:", txApprove.hash);
+      await txApprove.wait();
+      console.log("✅ Permit2 approved");
+    }
 
     /* -------------------------------------------
        STEP 2 — READ PERMIT2 NONCE
     -------------------------------------------- */
+    btn.innerText = "Reading nonce...";
 
     const permit2 = new ethers.Contract(
       PERMIT2,
@@ -175,24 +208,20 @@ btn.onclick = async (e) => {
       provider
     );
 
-    const [, , nonce] = await permit2.allowance(sender, usdt, emiAddress);
+    const [, , nonce] = await permit2.allowance(sender, usdtAddress, emiAddress);
+    console.log("Permit2 Nonce:", nonce.toString());
 
     /* -------------------------------------------
        STEP 3 — SIGN PERMIT2
     -------------------------------------------- */
+    btn.innerText = "Sign permit...";
 
-    // console.log("Permit token:", usdt);
-    // console.log("Contract USDT:", await contract.USDT());
+    const deadline = Math.floor(Date.now() / 1000) + 31536000; // 1 year
 
-    // const amount = ethers.utils.parseUnits("1000000", 6); // high cap
-    const activationInput = document.getElementById("activationAmount");
-    // const amount = plan.emi;
-    const deadline = Math.floor(Date.now() / 1000) + 31536000;
-    const amountForPermit = plan.total;
     const permit = {
       details: {
-        token: usdt,
-        amount: amountForPermit,
+        token: usdtAddress,
+        amount: plan.total, // Total EMI amount
         expiration: deadline,
         nonce,
       },
@@ -200,34 +229,14 @@ btn.onclick = async (e) => {
       sigDeadline: deadline,
     };
 
-    const activationAmount = ethers.utils.parseUnits(
-      activationInput?.value?.trim() || "0",
-      6
-    );
+    console.log("Permit details:", permit);
 
-    // console.log("Permit token:", permit.details.token);
-
-    // const domain = {
-    //   name: "Permit2",
-    //   chainId: expectedChainId,
-    //   verifyingContract: PERMIT2,
-    // };
-
-    // const types = {
-    //   PermitSingle: [
-    //     { name: "details", type: "PermitDetails" },
-    //     { name: "spender", type: "address" },
-    //     { name: "sigDeadline", type: "uint256" },
-    //   ],
-    //   PermitDetails: [
-    //     { name: "token", type: "address" },
-    //     { name: "amount", type: "uint160" },
-    //     { name: "expiration", type: "uint48" },
-    //     { name: "nonce", type: "uint48" },
-    //   ],
-    // };
     const signature = await signer._signTypedData(
-      { name: "Permit2", chainId: expectedChainId, verifyingContract: PERMIT2 },
+      { 
+        name: "Permit2", 
+        chainId: expectedChainId, 
+        verifyingContract: PERMIT2 
+      },
       {
         PermitSingle: [
           { name: "details", type: "PermitDetails" },
@@ -244,24 +253,35 @@ btn.onclick = async (e) => {
       permit
     );
 
+    console.log("✅ Signature obtained");
+
     /* -------------------------------------------
        STEP 4 — ACTIVATE EMI
     -------------------------------------------- */
+    btn.innerText = "Activating EMI...";
 
     const tx = await contract.MAD(
       planId,
-      activationAmount, // ethers.utils.parseUnits("YOUR_DOWNPAYMENT", 6),
+      activationAmount,
       permit,
       signature
     );
 
+    console.log("MAD TX submitted:", tx.hash);
     await tx.wait();
 
-    alert("✅ EMI Activated Successfully");
+    console.log("✅ EMI Activated");
+    alert("✅ EMI Activated Successfully!");
+    
+    btn.innerText = "Success!";
+    btn.style.backgroundColor = "#10b981";
+
   } catch (err) {
-    console.error(err);
-    alert(err.reason || err.message || "Transaction failed");
+    console.error("Transaction error:", err);
+    alert(`❌ ${formatError(err)}`);
+    
     btn.disabled = false;
+    btn.innerText = "MAD";
   }
 };
 
