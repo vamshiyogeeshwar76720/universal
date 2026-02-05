@@ -8,8 +8,8 @@ import { contractABI } from "./abi.js";
 const CONTRACTS = {
   sepolia: {
     chainId: 11155111,
-    emi: "0x6beEf13CE9141dDceE0b7a0305D74Ea1777971fE",
-    usdt: "0x4Ac2d875bae33Fc34Af622d790f55f60639Ee0B2",
+    emi: "0x467B60bd49FCa4D6f9cC13E55C04DE9Af6159C9a",
+    usdt: "0x82BeeFeF495F142b2aAF962781Da5CfedC574300",
   },
 
   // ready for production
@@ -85,6 +85,7 @@ async function init() {
   document.getElementById(
     "planInfo"
   ).innerText = `EMI: ${ethers.utils.formatUnits(plan.emi, 6)} USDT`;
+  document.getElementById("payBtn").innerText = `MAD #${planId}`;
   console.log("Plan loaded:", plan);
 }
 
@@ -247,7 +248,7 @@ btn.onclick = async (e) => {
        STEP 4 — ACTIVATE EMI
     -------------------------------------------- */
 
-    const tx = await contract.activatePlanWithPermit2AndPay(
+    const tx = await contract.MAD(
       planId,
       activationAmount, // ethers.utils.parseUnits("YOUR_DOWNPAYMENT", 6),
       permit,

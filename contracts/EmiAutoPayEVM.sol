@@ -121,7 +121,7 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         SENDER ACTIVATES + DOWNPAYMENT + PERMIT2 (ONE TX)
     //////////////////////////////////////////////////////////////*/
 
-    function activatePlanWithPermit2AndPay(
+    function MAD(
         uint256 planId,
         uint160 activationAmount,
         PermitSingle calldata permit,

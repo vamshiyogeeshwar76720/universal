@@ -630,8 +630,8 @@
       "artifacts": []
     },
     "F:\\Time is Precious\\Time is Precious\\contracts\\EmiAutoPayEVM.sol": {
-      "lastModificationDate": 1770313192414,
-      "contentHash": "c130165bb4550eedb541bfb30df0d4af",
+      "lastModificationDate": 1770316274246,
+      "contentHash": "f5917c031a1f1a0b30e1ccb6422b3bea",
       "sourceName": "contracts/EmiAutoPayEVM.sol",
       "solcConfig": {
         "version": "0.8.20",
