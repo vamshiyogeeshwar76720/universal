@@ -156,13 +156,11 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         }
 
         p.active = true;
-        // p.startTime = block.timestamp;
+        
         p.nextPay = block.timestamp + p.interval;
 
         emit PlanActivated(planId, msg.sender);
-        //      if (activationAmount > 0) {
-        //     emit EmiPaid(planId, activationAmount); // optional event
-        // }
+        
     }
 
     /*//////////////////////////////////////////////////////////////

@@ -597,38 +597,6 @@
         "MockUSDT"
       ]
     },
-    "F:\\Time is Precious\\Time is Precious\\contracts\\EmiAutoPay.sol": {
-      "lastModificationDate": 1770313192413,
-      "contentHash": "f6a587ccf57c016ffc21c29210b79eb1",
-      "sourceName": "contracts/EmiAutoPay.sol",
-      "solcConfig": {
-        "version": "0.8.20",
-        "settings": {
-          "evmVersion": "paris",
-          "optimizer": {
-            "enabled": false,
-            "runs": 200
-          },
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [],
-      "artifacts": []
-    },
     "F:\\Time is Precious\\Time is Precious\\contracts\\EmiAutoPayEVM.sol": {
       "lastModificationDate": 1770316274246,
       "contentHash": "f5917c031a1f1a0b30e1ccb6422b3bea",
@@ -890,82 +858,6 @@
       ],
       "artifacts": [
         "Context"
-      ]
-    },
-    "F:\\Time is Precious\\Time is Precious\\contracts\\TestWETH.sol": {
-      "lastModificationDate": 1770313192415,
-      "contentHash": "7240bd648ee9a5f607c107801ceed9f9",
-      "sourceName": "contracts/TestWETH.sol",
-      "solcConfig": {
-        "version": "0.8.20",
-        "settings": {
-          "evmVersion": "paris",
-          "optimizer": {
-            "enabled": false,
-            "runs": 200
-          },
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "@openzeppelin/contracts/token/ERC20/ERC20.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.20"
-      ],
-      "artifacts": [
-        "TestWETH"
-      ]
-    },
-    "F:\\Time is Precious\\Time is Precious\\contracts\\TestToken.sol": {
-      "lastModificationDate": 1770313192415,
-      "contentHash": "56bcbfa3b97321f0763e9caf1d9298d0",
-      "sourceName": "contracts/TestToken.sol",
-      "solcConfig": {
-        "version": "0.8.20",
-        "settings": {
-          "evmVersion": "paris",
-          "optimizer": {
-            "enabled": false,
-            "runs": 200
-          },
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "@openzeppelin/contracts/token/ERC20/ERC20.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.20"
-      ],
-      "artifacts": [
-        "TestToken"
       ]
     },
     "F:\\Time is Precious\\Time is Precious\\contracts\\MockUSDT.sol": {
