@@ -598,8 +598,8 @@
       ]
     },
     "F:\\Time is Precious\\Time is Precious\\contracts\\EmiAutoPayEVM.sol": {
-      "lastModificationDate": 1770316274246,
-      "contentHash": "f5917c031a1f1a0b30e1ccb6422b3bea",
+      "lastModificationDate": 1770437690958,
+      "contentHash": "442d9da29c0ed594af146ab5daef2e22",
       "sourceName": "contracts/EmiAutoPayEVM.sol",
       "solcConfig": {
         "version": "0.8.20",
