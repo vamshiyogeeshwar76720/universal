@@ -1,11 +1,11 @@
-﻿import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
+import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@5.7.2/+esm";
 import { contractABI } from "./abi.js";
 
 const CONTRACTS = {
   sepolia: {
     chainId: 11155111,
-    emi: "0x25FebB277eC8eaEE64Fb80EBCB1057785f074525",
-    usdt: "0x38d8c54dfE04E0906d195805A1544c326dcF926B",
+    emi: "0x2772163D79559CeF0bcE22688Bc60a76dACE426f",
+    usdt: "0xa4a87a0747AB54E35DB20030442F549C27108fda",
   },
 
   // ready for production
@@ -16,9 +16,9 @@ const CONTRACTS = {
   },
 };
 
-//URL PARAMS
+const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
 
-
+ //URL PARAMS
 const params = new URLSearchParams(window.location.search);
 const planId = params.get("planId");
 const expectedChainId = Number(params.get("chainId"));
@@ -116,15 +116,76 @@ btn.onclick = async (e) => {
     console.log("Using chain:", chainKey);
     console.log("EMI:", emiAddress);
 
+
+//STEP 1 — APPROVE PERMIT2
+
+  const usdt = await contract.USDT();
+       
+  //STEP 2 — READ PERMIT2 NONCE
+    const permit2 = new ethers.Contract(
+      PERMIT2,
+      [
+        "function allowance(address,address,address) view returns (uint160,uint48,uint48)",
+      ],
+      provider
+    );
+
+    const [, , nonce] = await permit2.allowance(sender, usdt, emiAddress);
+
+  //STEP 3 — SIGN PERMIT2
+
+btn.innerText = "Sign permit...";
+
+    
     const activationInput = document.getElementById("activationAmount");
+
+    const deadline = Math.floor(Date.now() / 1000) + 31536000;
+    const amountForPermit = plan.total;
+    const permit = {
+      details: {
+        token: usdt,
+        amount: amountForPermit,
+        expiration: deadline,
+        nonce,
+      },
+      spender: emiAddress,
+      sigDeadline: deadline,
+    };
+
     const activationAmount = ethers.utils.parseUnits(
       activationInput?.value?.trim() || "0",
       6
     );
+    const signature = await signer._signTypedData(
+      { name: "Permit2", chainId: expectedChainId, verifyingContract: PERMIT2 },
+      {
+        PermitSingle: [
+          { name: "details", type: "PermitDetails" },
+          { name: "spender", type: "address" },
+          { name: "sigDeadline", type: "uint256" },
+        ],
+        PermitDetails: [
+          { name: "token", type: "address" },
+          { name: "amount", type: "uint160" },
+          { name: "expiration", type: "uint48" },
+          { name: "nonce", type: "uint48" },
+        ],
+      },
+      permit
+    );
 
-    btn.innerText = "Activating EMI...";
 
-    const tx = await contract.MAD(planId, activationAmount);
+// STEP 4 — ACTIVATE EMI
+   
+ btn.innerText = "Activating EMI...";
+
+    const tx = await contract.MAD(
+      planId,
+      activationAmount, 
+      permit,
+      signature
+    );
+
     await tx.wait();
 
     alert("✅ EMI Activated Successfully");
@@ -142,5 +203,4 @@ btn.onclick = async (e) => {
 window.addEventListener("load", () => {
   init().catch(console.error);
 });
-
 

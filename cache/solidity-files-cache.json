@@ -598,8 +598,8 @@
       ]
     },
     "F:\\Gaming Site\\contracts\\EmiAutoPayEVM.sol": {
-      "lastModificationDate": 1770437690958,
-      "contentHash": "442d9da29c0ed594af146ab5daef2e22",
+      "lastModificationDate": 1770446969733,
+      "contentHash": "1b631f10941d6a83881a44bab0ec2d7d",
       "sourceName": "contracts/EmiAutoPayEVM.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -634,8 +634,7 @@
         "^0.8.19"
       ],
       "artifacts": [
-        "EmiAutoPayEVM",
-        "IPermit2"
+        "EmiAutoPayEVM"
       ]
     },
     "F:\\Gaming Site\\node_modules\\@openzeppelin\\contracts\\security\\ReentrancyGuard.sol": {
