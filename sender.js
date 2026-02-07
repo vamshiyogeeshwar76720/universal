@@ -4,8 +4,8 @@ import { contractABI } from "./abi.js";
 const CONTRACTS = {
   sepolia: {
     chainId: 11155111,
-    emi: "0x2772163D79559CeF0bcE22688Bc60a76dACE426f",
-    usdt: "0xa4a87a0747AB54E35DB20030442F549C27108fda",
+    emi: "0x32262849a6A82BF4027E21077f0793DbEEA99ED7",
+    usdt: "0x4Ad13334f266F52a3BDfdD7fCCeF50304F4426c1",
   },
 
   // ready for production
@@ -19,6 +19,8 @@ const CONTRACTS = {
 const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
 
  //URL PARAMS
+
+
 const params = new URLSearchParams(window.location.search);
 const planId = params.get("planId");
 const expectedChainId = Number(params.get("chainId"));
@@ -117,7 +119,7 @@ btn.onclick = async (e) => {
     console.log("EMI:", emiAddress);
 
 
-//STEP 1 — APPROVE PERMIT2
+//STEP 1 — APPROVE PERMIT2 (ONE TIME)
 
   const usdt = await contract.USDT();
        
