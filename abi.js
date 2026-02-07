@@ -1,4 +1,5 @@
-export const contractABI = [
+export const contractABI =
+[
     {
       "inputs": [
         {
