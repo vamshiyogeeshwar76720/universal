@@ -597,7 +597,7 @@
         "MockUSDT"
       ]
     },
-    "F:\\Time is Precious\\Time is Precious\\contracts\\EmiAutoPayEVM.sol": {
+    "F:\\Gaming Site\\contracts\\EmiAutoPayEVM.sol": {
       "lastModificationDate": 1770437690958,
       "contentHash": "442d9da29c0ed594af146ab5daef2e22",
       "sourceName": "contracts/EmiAutoPayEVM.sol",
@@ -638,7 +638,7 @@
         "IPermit2"
       ]
     },
-    "F:\\Time is Precious\\Time is Precious\\node_modules\\@openzeppelin\\contracts\\security\\ReentrancyGuard.sol": {
+    "F:\\Gaming Site\\node_modules\\@openzeppelin\\contracts\\security\\ReentrancyGuard.sol": {
       "lastModificationDate": 1770265181589,
       "contentHash": "1535f8c0c68463f8c1b5239f7584e71f",
       "sourceName": "@openzeppelin/contracts/security/ReentrancyGuard.sol",
@@ -674,7 +674,7 @@
         "ReentrancyGuard"
       ]
     },
-    "F:\\Time is Precious\\Time is Precious\\node_modules\\@openzeppelin\\contracts\\token\\ERC20\\IERC20.sol": {
+    "F:\\Gaming Site\\node_modules\\@openzeppelin\\contracts\\token\\ERC20\\IERC20.sol": {
       "lastModificationDate": 1770265181623,
       "contentHash": "df36f7051335cd1e748b1b6463b7fdd3",
       "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
@@ -710,7 +710,7 @@
         "IERC20"
       ]
     },
-    "F:\\Time is Precious\\Time is Precious\\node_modules\\@chainlink\\contracts\\src\\v0.8\\automation\\interfaces\\AutomationCompatibleInterface.sol": {
+    "F:\\Gaming Site\\node_modules\\@chainlink\\contracts\\src\\v0.8\\automation\\interfaces\\AutomationCompatibleInterface.sol": {
       "lastModificationDate": 1770265156821,
       "contentHash": "b89eb5204513faea51bec335a9ee7faa",
       "sourceName": "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol",
@@ -746,7 +746,7 @@
         "AutomationCompatibleInterface"
       ]
     },
-    "F:\\Time is Precious\\Time is Precious\\node_modules\\@openzeppelin\\contracts\\token\\ERC20\\extensions\\IERC20Metadata.sol": {
+    "F:\\Gaming Site\\node_modules\\@openzeppelin\\contracts\\token\\ERC20\\extensions\\IERC20Metadata.sol": {
       "lastModificationDate": 1770265181607,
       "contentHash": "909ab67fc5c25033fe6cd364f8c056f9",
       "sourceName": "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol",
@@ -784,7 +784,7 @@
         "IERC20Metadata"
       ]
     },
-    "F:\\Time is Precious\\Time is Precious\\node_modules\\@openzeppelin\\contracts\\token\\ERC20\\ERC20.sol": {
+    "F:\\Gaming Site\\node_modules\\@openzeppelin\\contracts\\token\\ERC20\\ERC20.sol": {
       "lastModificationDate": 1770265181607,
       "contentHash": "3ae5166c6827a9cf1a7a462d1632b464",
       "sourceName": "@openzeppelin/contracts/token/ERC20/ERC20.sol",
@@ -824,7 +824,7 @@
         "ERC20"
       ]
     },
-    "F:\\Time is Precious\\Time is Precious\\node_modules\\@openzeppelin\\contracts\\utils\\Context.sol": {
+    "F:\\Gaming Site\\node_modules\\@openzeppelin\\contracts\\utils\\Context.sol": {
       "lastModificationDate": 1770265181686,
       "contentHash": "5f2c5c4b6af2dd4551027144797bc8be",
       "sourceName": "@openzeppelin/contracts/utils/Context.sol",
@@ -860,7 +860,7 @@
         "Context"
       ]
     },
-    "F:\\Time is Precious\\Time is Precious\\contracts\\MockUSDT.sol": {
+    "F:\\Gaming Site\\contracts\\MockUSDT.sol": {
       "lastModificationDate": 1770313192414,
       "contentHash": "a267c5df8feb4c31f2fb18dda938aa6b",
       "sourceName": "contracts/MockUSDT.sol",
