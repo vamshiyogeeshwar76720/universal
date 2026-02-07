@@ -4,17 +4,16 @@ import { contractABI } from "./abi.js";
 
 import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm";
 
-/* =========================================================
-   GLOBAL STATE
-========================================================= */
+
+//   GLOBAL STATE
+
 let provider;
 let signer;
 let receiverAddress;
 let currentChainId;
 
-/* =========================================================
-   UI ELEMENTS
-========================================================= */
+//   UI ELEMENTS
+
 const connectBtn = document.getElementById("connectWalletBtn");
 const disconnectBtn = document.getElementById("disconnectWalletBtn");
 const accountDisplay = document.getElementById("account");
@@ -28,9 +27,9 @@ const intervalSelect = document.getElementById("intervalSelect");
 const customIntervalInput = document.getElementById("customInterval");
 
 const modifyReceiverBtn = document.getElementById("modifyReceiverBtn");
-/* =========================================================
-   NETWORK HELPERS
-========================================================= */
+
+// NETWORK HELPERS
+
 function getNetworkLabel(chainId) {
   if (chainId === 1) return "Ethereum Mainnet";
   if (chainId === 11155111) return "Sepolia Testnet";
@@ -43,9 +42,9 @@ function getBlockchainKeyByChainId(chainId) {
   );
 }
 
-/* =========================================================
-   SYNC NETWORK (SOURCE OF TRUTH)
-========================================================= */
+
+// SYNC NETWORK (SOURCE OF TRUTH)
+
 async function syncNetwork() {
   const chainIdHex = await window.ethereum.request({
     method: "eth_chainId",
@@ -67,9 +66,8 @@ async function syncNetwork() {
   console.log("✅ Connected chain:", currentChainId, chainKey);
 }
 
-/* =========================================================
-   WALLET CONNECTION
-========================================================= */
+// WALLET CONNECTION
+
 async function connectWallet() {
   if (!window.ethereum) {
     alert("MetaMask required");
@@ -84,7 +82,7 @@ async function connectWallet() {
   localStorage.setItem("walletConnected", "true");
   accountDisplay.innerText = `Wallet: ${receiverAddress}`;
 
-  // Important for Netlify cold load
+
   await new Promise((res) => setTimeout(res, 200));
   await syncNetwork();
 
@@ -127,43 +125,13 @@ function disconnectWallet() {
 connectBtn.onclick = connectWallet;
 disconnectBtn.onclick = disconnectWallet;
 
-/* =========================================================
-   UPDATE RECEIVER BUTTON
-========================================================= */
 
-modifyReceiverBtn.onclick = async () => {
-  if (!signer) return alert("Connect wallet");
 
-  const planId = document.getElementById("modifyPlanId").value;
-  const newReceiver = document.getElementById("newReceiverAddress").value;
-
-  if (!planId || !newReceiver) return alert("Missing input");
-
-  const contract = new ethers.Contract(
-    AppConfig.getEmiContract(blockchainSelect.value),
-    contractABI,
-    signer
-  );
-
-  try {
-    const tx = await contract.updateReceiver(planId, newReceiver);
-    await tx.wait();
-    alert("✅ Receiver updated successfully");
-  } catch (err) {
-    console.error(err);
-    alert(err.reason || err.message);
-  }
-};
-
-/* =========================================================
-   AUTO CONNECT ON LOAD
-========================================================= */
-
+// AUTO CONNECT ON LOAD
 window.addEventListener("load", autoReconnect);
 
-/* =========================================================
-   CHAIN & TOKEN DROPDOWNS
-========================================================= */
+//CHAIN & TOKEN DROPDOWNS
+
 Object.entries(AppConfig.CHAINS).forEach(([key, cfg]) => {
   const opt = document.createElement("option");
   opt.value = key;
@@ -193,17 +161,16 @@ tokenSelect.addEventListener("change", () => {
   tokenAddressDisplay.value = tokenSelect.value || "";
 });
 
-/* =========================================================
-   INTERVAL HANDLING
-========================================================= */
+
+//   INTERVAL HANDLING
 intervalSelect.addEventListener("change", () => {
   customIntervalInput.style.display =
     intervalSelect.value === "custom" ? "block" : "none";
 });
 
-/* =========================================================
-   CREATE EMI PLAN
-========================================================= */
+
+//   CREATE EMI PLAN
+
 document.getElementById("createPlanBtn").onclick = async () => {
   if (!signer) return alert("Connect MetaMask");
 
@@ -255,12 +222,10 @@ document.getElementById("createPlanBtn").onclick = async () => {
     return;
   }
 
-  /* =====================================================
-     DEEPLINK + QR
-  ===================================================== */
-  const host = window.location.origin.replace("https://", "");
+  
+  //   DEEPLINK + QR
 
-  // Base sender URL (same logic)
+  const host = window.location.origin.replace("https://", "");
   const senderUrl = `${window.location.origin}/sender.html?planId=${planId}&chainId=${currentChainId}`;
 
   // MetaMask deep link (EXACT same as before)
@@ -301,9 +266,8 @@ function renderWalletQR(metamaskLink, trustWalletLink) {
 }
 
 
-/* =========================================================
-   METAMASK EVENTS
-========================================================= */
+//   METAMASK EVENTS
+
 if (window.ethereum) {
   window.ethereum.on("chainChanged", async () => {
     await syncNetwork();
