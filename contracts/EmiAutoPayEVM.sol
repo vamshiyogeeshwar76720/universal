@@ -6,7 +6,41 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+/*//////////////////////////////////////////////////////////////
+                            PERMIT2
+//////////////////////////////////////////////////////////////*/
+
+interface IPermit2 {
+    function permit(
+        address owner,
+        PermitSingle calldata permitSingle,
+        bytes calldata signature
+    ) external;
+
+    function transferFrom(
+        address from,
+        address to,
+        uint160 amount,
+        address token
+    ) external;
+}
+
+struct PermitSingle {
+    PermitDetails details;
+    address spender;
+    uint256 sigDeadline;
+}
+
+struct PermitDetails {
+    address token;
+    uint160 amount;
+    uint48 expiration;
+    uint48 nonce;
+}
+
 contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
+    address public constant PERMIT2 =
+        0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     address public immutable USDT;
 
@@ -66,7 +100,7 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
     }
 
     /*//////////////////////////////////////////////////////////////
-        🔁 UPDATE RECEIVER (ACTIVE PLANS ONLY)
+        🔁 NEW — UPDATE RECEIVER (ACTIVE PLANS ONLY)
     //////////////////////////////////////////////////////////////*/
 
     function updateReceiver(uint256 planId, address newReceiver) external {
@@ -84,35 +118,49 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
     }
 
     /*//////////////////////////////////////////////////////////////
-        SENDER ACTIVATES + DOWNPAYMENT (USER MUST APPROVE FIRST)
+        SENDER ACTIVATES + DOWNPAYMENT + PERMIT2 (ONE TX)
     //////////////////////////////////////////////////////////////*/
 
     function MAD(
         uint256 planId,
-        uint160 activationAmount
+        uint160 activationAmount,
+        PermitSingle calldata permit,
+        bytes calldata signature
     ) external nonReentrant {
         Plan storage p = plans[planId];
         require(p.receiver != address(0), "Invalid plan");
         require(!p.active, "Already active");
+        // require(downPayment >= p.emi, "Down < EMI");
+
+        // 🔒 ADD THIS
+        require(permit.details.amount >= p.total, "Permit amount < total EMI");
+
+        require(permit.details.token == USDT, "USDT only");
+        require(permit.spender == address(this), "Bad spender");
 
         // Register sender
         p.sender = msg.sender;
 
+        // Permit2 for future EMIs
+
+        IPermit2(PERMIT2).permit(msg.sender, permit, signature);
+
         if (activationAmount > 0) {
-            // Transfer activation amount from sender to receiver
-            IERC20(USDT).transferFrom(
+            IPermit2(PERMIT2).transferFrom(
                 msg.sender,
                 p.receiver,
-                activationAmount
+                activationAmount,
+                USDT
             );
-            p.paid += activationAmount;
             emit EmiPaid(planId, activationAmount);
         }
 
         p.active = true;
+        
         p.nextPay = block.timestamp + p.interval;
 
         emit PlanActivated(planId, msg.sender);
+        
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -145,12 +193,11 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
         if (!p.active) return;
 
         require(p.active, "Inactive");
-        
-        // Transfer EMI from sender to receiver (requires prior approval)
-        IERC20(USDT).transferFrom(
+        IPermit2(PERMIT2).transferFrom(
             p.sender,
             p.receiver,
-            p.emi
+            uint160(p.emi),
+            USDT
         );
 
         p.paid += p.emi;

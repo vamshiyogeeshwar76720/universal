@@ -4,8 +4,8 @@ import { contractABI } from "./abi.js";
 const CONTRACTS = {
   sepolia: {
     chainId: 11155111,
-    emi: "0x32262849a6A82BF4027E21077f0793DbEEA99ED7",
-    usdt: "0x4Ad13334f266F52a3BDfdD7fCCeF50304F4426c1",
+    emi: "0x69137bBa7d9DdF9f2F5362004F26A33c22dF3100",
+    usdt: "0xCC542568246FAce137AD5A55D4034C597Dd9fC42",
   },
 
   // ready for production
