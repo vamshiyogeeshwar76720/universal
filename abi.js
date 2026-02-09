@@ -1,5 +1,4 @@
-export const contractABI =
-[
+export const contractABI = [
     {
       "inputs": [
         {
@@ -101,6 +100,32 @@ export const contractABI =
       "type": "event"
     },
     {
+      "inputs": [],
+      "name": "PERMIT2",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "USDT",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "uint256",
@@ -162,35 +187,9 @@ export const contractABI =
           "type": "bytes"
         }
       ],
-      "name": "MAD",
+      "name": "activatePlanWithPermit2AndPay",
       "outputs": [],
       "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "PERMIT2",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "USDT",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -318,24 +317,6 @@ export const contractABI =
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "planId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "newReceiver",
-          "type": "address"
-        }
-      ],
-      "name": "updateReceiver",
-      "outputs": [],
-      "stateMutability": "nonpayable",
       "type": "function"
     }
   ];
