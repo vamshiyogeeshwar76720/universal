@@ -4,7 +4,7 @@ export const contractABI =
       "inputs": [
         {
           "internalType": "address",
-          "name": "_usdt",
+          "name": "_usdt", 
           "type": "address"
         }
       ],

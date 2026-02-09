@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
 
-    address public immutable USDT;
+    address public immutable USDT;  
 
     constructor(address _usdt) {
         require(_usdt != address(0), "Invalid USDT");
@@ -17,7 +17,7 @@ contract EmiAutoPayEVM is AutomationCompatibleInterface, ReentrancyGuard {
 
     struct Plan {
         address sender;
-        address receiver;
+        address receiver; 
         uint256 emi;
         uint256 interval;
         uint256 total;

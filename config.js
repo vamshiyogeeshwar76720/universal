@@ -4,7 +4,7 @@ const CHAINS = {
   ethereum: {
     type: "evm",
     name: "Ethereum",
-
+ 
     testnet: {
       name: "Sepolia",
       chainId: 11155111,

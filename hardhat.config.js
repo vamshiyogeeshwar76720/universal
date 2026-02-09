@@ -8,7 +8,7 @@ const {
   ENV,
 } = process.env;
 
-export default {
+export default { 
   solidity: "0.8.20",
   defaultNetwork: ENV === "mainnet" ? "ethereumMainnet" : "ethereumSepolia",
   networks: {

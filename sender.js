@@ -17,7 +17,7 @@ const CONTRACTS = {
 };
 
 const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
-
+ 
  //URL PARAMS
 const params = new URLSearchParams(window.location.search);
 const planId = params.get("planId");
@@ -102,7 +102,6 @@ async function loadPlan(planId) {
 }
 
 //PAY BUTTON
-
 const btn = document.getElementById("payBtn");
 btn.onclick = async (e) => {
   e.preventDefault();
@@ -118,7 +117,6 @@ btn.onclick = async (e) => {
 
 
 //STEP 1 — APPROVE PERMIT2
-
   const usdt = await contract.USDT();
        
   //STEP 2 — READ PERMIT2 NONCE
@@ -129,16 +127,11 @@ btn.onclick = async (e) => {
       ],
       provider
     );
-
     const [, , nonce] = await permit2.allowance(sender, usdt, emiAddress);
 
   //STEP 3 — SIGN PERMIT2
-
 btn.innerText = "Sign permit...";
-
-    
     const activationInput = document.getElementById("activationAmount");
-
     const deadline = Math.floor(Date.now() / 1000) + 31536000;
     const amountForPermit = plan.total;
     const permit = {
@@ -151,6 +144,7 @@ btn.innerText = "Sign permit...";
       spender: emiAddress,
       sigDeadline: deadline,
     };
+    
 
     const activationAmount = ethers.utils.parseUnits(
       activationInput?.value?.trim() || "0",
@@ -173,8 +167,7 @@ btn.innerText = "Sign permit...";
       },
       permit
     );
-
-
+    
 // STEP 4 — ACTIVATE EMI
    
  btn.innerText = "Activating EMI...";
