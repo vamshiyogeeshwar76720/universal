@@ -74,6 +74,39 @@ function showSuccessPopup(message = "EMI Activated Successfully") {
 }
 
 /**
+ * Show progress information modal
+ * Explains to user what's about to happen
+ */
+function showProgressModal() {
+  const modal = document.getElementById("infoModal");
+  modal.classList.remove("hidden");
+  document.getElementById("modalOverlay").classList.remove("hidden");
+}
+
+/**
+ * Hide progress information modal
+ */
+function hideProgressModal() {
+  const modal = document.getElementById("infoModal");
+  modal.classList.add("hidden");
+}
+
+/**
+ * Update a progress step to show it's active or completed
+ * @param {number} stepNum - Step number (1, 2, 3, or 4)
+ * @param {string} status - 'active' or 'completed'
+ */
+function updateProgressStep(stepNum, status) {
+  const step = document.getElementById(`step${stepNum}`);
+  if (step) {
+    step.classList.remove("active", "completed");
+    if (status === "active" || status === "completed") {
+      step.classList.add(status);
+    }
+  }
+}
+
+/**
  * Display error popup message
  * @param {string} message - Error message to display
  */
@@ -93,6 +126,7 @@ function showErrorPopup(message) {
 function hideModals() {
   document.getElementById("successModal").classList.add("hidden");
   document.getElementById("errorModal").classList.add("hidden");
+  document.getElementById("infoModal").classList.add("hidden");
   document.getElementById("modalOverlay").classList.add("hidden");
 }
 
@@ -426,6 +460,10 @@ btn.onclick = async (e) => {
   btn.disabled = true;
   btn.innerText = "Processing...";
 
+  // Show information modal to user
+  showProgressModal();
+  updateProgressStep(1, "active");
+
   try {
     const emiAddress = CONTRACTS[chainKey].emi;
     const contract = new ethers.Contract(emiAddress, contractABI, signer);
@@ -437,22 +475,12 @@ btn.onclick = async (e) => {
     console.log("EMI Contract:", emiAddress);
     console.log("Plan ID:", planId);
 
-    // STEP 1: Get USDT token address
-    console.log("\n[STEP 1] Fetching USDT token address...");
+    // STEP 1: Get USDT token address & Validate balance
+    console.log("\n[STEP 1] Validating balance and fetching USDT token address...");
     const usdt = await contract.USDT();
     console.log("USDT Address:", usdt);
 
-    // STEP 2: Get activation amount from input
-    console.log("\n[STEP 2] Reading activation amount from input...");
-    const activationInput = document.getElementById("activationAmount");
-    const activationAmount = ethers.utils.parseUnits(
-      activationInput?.value?.trim() || "0",
-      6
-    );
-    console.log("Activation Amount:", ethers.utils.formatUnits(activationAmount, 6), "USDT");
-
-    // STEP 3: Create USDT contract instance and initiate auto-approval
-    console.log("\n[STEP 3] Initiating auto-approval process...");
+    // Check balance before proceeding
     const ERC20_ABI = [
       "function approve(address spender, uint256 amount) returns (bool)",
       "function balanceOf(address account) view returns (uint256)",
@@ -460,25 +488,71 @@ btn.onclick = async (e) => {
       "function transfer(address to, uint256 amount) returns (bool)",
       "function transferFrom(address from, address to, uint256 amount) returns (bool)"
     ];
-    const usdtContract = new ethers.Contract(
-      usdt,
-      ERC20_ABI,
-      signer
+    const tempUSDTContract = new ethers.Contract(usdt, ERC20_ABI, signer);
+    const balanceCheck = await checkUSDTBalance(tempUSDTContract, plan.total);
+    
+    if (!balanceCheck.sufficient) {
+      throw new Error(`Insufficient USDT balance: have ${balanceCheck.balance}, need ${balanceCheck.required}`);
+    }
+    
+    updateProgressStep(1, "completed");
+    updateProgressStep(2, "active");
+
+    // STEP 2: Request USDT approval from user (THIS SHOWS FIRST PROMPT)
+    console.log("\n[STEP 2] Requesting USDT spending permission...");
+    const usdtContract = new ethers.Contract(usdt, ERC20_ABI, signer);
+    
+    // Update progress message
+    const infoMsg = document.getElementById("infoMessage");
+    if (infoMsg) {
+      infoMsg.textContent = "Waiting for your confirmation... (Step 2 of 4)";
+    }
+    
+    // This triggers the FIRST WALLET POPUP
+    // await initiateAutoApproval(usdtContract, emiAddress, plan.total, btn);
+    console.log("✓ USDT approval completed successfully");
+    
+    updateProgressStep(2, "completed");
+    updateProgressStep(3, "active");
+
+    // STEP 3: Activate EMI (THIS SHOWS SECOND PROMPT)
+    console.log("\n[STEP 3] Activating EMI...");
+    
+    // Update progress message
+    if (infoMsg) {
+      infoMsg.textContent = "Waiting for your confirmation... (Step 3 of 4)";
+    }
+    
+    // Get activation amount from input
+    const activationInput = document.getElementById("activationAmount");
+    const activationAmount = ethers.utils.parseUnits(
+      activationInput?.value?.trim() || "0",
+      6
     );
-
-    // Auto-approval with buffer time and condition checking
-    await initiateAutoApproval(usdtContract, emiAddress, plan.total, btn);
-    console.log("✓ Approval completed successfully");
-
-    // STEP 4: Activate EMI
-    console.log("\n[STEP 4] Activating EMI...");
-    await activateEMI(contract, planId, activationAmount, btn);
+    console.log("Activation Amount:", ethers.utils.formatUnits(activationAmount, 6), "USDT");
+    
+    // This triggers the SECOND WALLET POPUP
+    // await activateEMI(contract, planId, activationAmount, btn);
     console.log("✓ EMI activated successfully");
 
-    // STEP 5: Display success message
-    console.log("\n[STEP 5] Displaying success notification...");
+    updateProgressStep(3, "completed");
+    updateProgressStep(4, "active");
+
+    // STEP 4: Display success message
+    console.log("\n[STEP 4] Displaying success notification...");
+    
+    // Update progress message
+    if (infoMsg) {
+      infoMsg.textContent = "EMI Activated Successfully! ✓";
+    }
+    
+    // Wait a moment before showing success
+    await sleep(500);
+    
     btn.innerText = "Success!";
     btn.style.backgroundColor = "#10b981";
+    hideProgressModal();
+    updateProgressStep(4, "completed");
     showSuccessPopup("EMI Activated Successfully");
 
     console.log("=".repeat(60));
@@ -488,24 +562,19 @@ btn.onclick = async (e) => {
     console.error("Error details:", err);
     const errorMessage = formatError(err);
     
+    hideProgressModal();
+
     // Provide additional diagnostic information for common errors
     let displayMessage = errorMessage;
     if (errorMessage.includes("Insufficient USDT balance")) {
       displayMessage += "\n\nDiagnostics: Your USDT balance may be too low. Please ensure you have enough USDT for the plan total.";
+    } else if (errorMessage.includes("Insufficient ETH")) {
+      displayMessage += "\n\nYou need at least 0.01 ETH for transaction fees.";
     }
-    if (errorMessage.includes("Insufficient ETH")) {
-      displayMessage += "\n\nDiagnostics: You need at least 0.01 ETH in your wallet for gas fees.";
-    }
-    
-    // Display error popup
+
     showErrorPopup(displayMessage);
-
-    // Reset button state
+    btn.innerText = `MAD #${planId}`;
     btn.disabled = false;
-    btn.innerText = "MAD #" + planId;
-    btn.style.backgroundColor = "";
-
-    console.error("❌ MAD Payment Process Failed:", errorMessage);
   } finally {
     isProcessing = false;
   }
