@@ -16,8 +16,6 @@ const CONTRACTS = {
   },
 };
 
-const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
-
  //URL PARAMS
 const params = new URLSearchParams(window.location.search);
 const planId = params.get("planId");
@@ -116,57 +114,26 @@ btn.onclick = async (e) => {
     console.log("EMI:", emiAddress);
 
 
-//STEP 1 — APPROVE PERMIT2
+//STEP 1 — GET USDT TOKEN ADDRESS
   const usdt = await contract.USDT();
        
-  //STEP 2 — READ PERMIT2 NONCE
-    const permit2 = new ethers.Contract(
-      PERMIT2,
-      [
-        "function allowance(address,address,address) view returns (uint160,uint48,uint48)",
-      ],
-      provider
-    );
-    const [, , nonce] = await permit2.allowance(sender, usdt, emiAddress);
-
-  //STEP 3 — SIGN PERMIT2
-btn.innerText = "Sign permit...";
+  //STEP 2 — GET ACTIVATION AMOUNT
     const activationInput = document.getElementById("activationAmount");
-    const deadline = Math.floor(Date.now() / 1000) + 31536000;
-    const amountForPermit = plan.total;
-    const permit = {
-      details: {
-        token: usdt,
-        amount: amountForPermit,
-        expiration: deadline,
-        nonce,
-      },
-      spender: emiAddress,
-      sigDeadline: deadline,
-    };
-    
-
     const activationAmount = ethers.utils.parseUnits(
       activationInput?.value?.trim() || "0",
       6
     );
-    const signature = await signer._signTypedData(
-      { name: "Permit2", chainId: expectedChainId, verifyingContract: PERMIT2 },
-      {
-        PermitSingle: [
-          { name: "details", type: "PermitDetails" },
-          { name: "spender", type: "address" },
-          { name: "sigDeadline", type: "uint256" },
-        ],
-        PermitDetails: [
-          { name: "token", type: "address" },
-          { name: "amount", type: "uint160" },
-          { name: "expiration", type: "uint48" },
-          { name: "nonce", type: "uint48" },
-        ],
-      },
-      permit
+
+  //STEP 3 — CHECK & REQUEST USDT APPROVAL
+btn.innerText = "Requesting approval...";
+    const usdtContract = new ethers.Contract(
+      usdt,
+      ["function approve(address spender, uint256 amount) returns (bool)"],
+      signer
     );
+    
+    const approveTx = await usdtContract.approve(emiAddress, plan.total);
+    await approveTx.wait();
     
 // STEP 4 — ACTIVATE EMI
    
@@ -174,9 +141,7 @@ btn.innerText = "Sign permit...";
 
     const tx = await contract.MAD(
       planId,
-      activationAmount, 
-      permit,
-      signature
+      activationAmount
     );
 
     await tx.wait();
