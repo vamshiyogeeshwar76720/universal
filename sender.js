@@ -64,7 +64,7 @@ function formatError(err) {
  * Display success popup message
  * @param {string} message - Success message to display
  */
-function showSuccessPopup(message = "EMI activated successfully") {
+function showSuccessPopup(message = "EMI Activated Successfully") {
   const modal = document.getElementById("successModal");
   const messageEl = document.getElementById("successMessage");
   
@@ -352,6 +352,30 @@ async function init() {
     document.getElementById(
       "planInfo"
     ).innerText = `EMI: ${ethers.utils.formatUnits(plan.emi, 6)} USDT`;
+    
+    // Display detailed plan information
+    const planDetailsEl = document.getElementById("planDetails");
+    if (planDetailsEl) {
+      document.getElementById("detailEmi").textContent = `${ethers.utils.formatUnits(plan.emi, 6)} USDT`;
+      document.getElementById("detailTotal").textContent = `${ethers.utils.formatUnits(plan.total, 6)} USDT`;
+      
+      // Format interval as human-readable
+      const intervalSeconds = plan.interval.toString();
+      const intervalHours = Math.floor(intervalSeconds / 3600);
+      const intervalDays = Math.floor(intervalSeconds / 86400);
+      let intervalText;
+      if (intervalDays >= 1) {
+        intervalText = `${intervalDays} day${intervalDays > 1 ? 's' : ''}`;
+      } else if (intervalHours >= 1) {
+        intervalText = `${intervalHours} hour${intervalHours > 1 ? 's' : ''}`;
+      } else {
+        intervalText = `${intervalSeconds} seconds`;
+      }
+      document.getElementById("detailInterval").textContent = intervalText;
+      document.getElementById("detailReceiver").textContent = plan.receiver;
+      planDetailsEl.style.display = "block";
+    }
+    
     document.getElementById("payBtn").innerText = `MAD #${planId}`;
     console.log("Plan loaded:", plan);
   } catch (err) {
@@ -455,7 +479,7 @@ btn.onclick = async (e) => {
     console.log("\n[STEP 5] Displaying success notification...");
     btn.innerText = "Success!";
     btn.style.backgroundColor = "#10b981";
-    showSuccessPopup("✅ EMI activated successfully");
+    showSuccessPopup("EMI Activated Successfully");
 
     console.log("=".repeat(60));
     console.log("MAD PAYMENT PROCESS COMPLETED SUCCESSFULLY");
