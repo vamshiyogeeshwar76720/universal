@@ -113,15 +113,24 @@ function sleep(ms) {
  * Check if user has sufficient USDT balance for approval
  * @param {ethers.Contract} usdtContract - USDT token contract instance
  * @param {ethers.BigNumber} requiredAmount - Amount needed for approval
- * @returns {Promise<boolean>} True if balance is sufficient
+ * @returns {Promise<{sufficient: boolean, balance: string, required: string, balanceBN: ethers.BigNumber}>} Balance check result
  */
 async function checkUSDTBalance(usdtContract, requiredAmount) {
   try {
     const balance = await usdtContract.balanceOf(sender);
-    return balance.gte(requiredAmount);
+    const isSufficient = balance.gte(requiredAmount);
+    
+    console.log(`USDT Balance Check: ${ethers.utils.formatUnits(balance, 6)} USDT (Required: ${ethers.utils.formatUnits(requiredAmount, 6)} USDT)`);
+    
+    return {
+      sufficient: isSufficient,
+      balance: ethers.utils.formatUnits(balance, 6),
+      required: ethers.utils.formatUnits(requiredAmount, 6),
+      balanceBN: balance
+    };
   } catch (err) {
     console.error("Balance check error:", err);
-    return false;
+    throw new Error(`Failed to check USDT balance: ${err.message}`);
   }
 }
 
@@ -144,31 +153,43 @@ async function checkETHBalance() {
  * Validate all conditions before proceeding with approval
  * @param {ethers.Contract} usdtContract - USDT token contract
  * @param {ethers.BigNumber} approvalAmount - Amount to approve
- * @returns {Promise<{valid: boolean, issues: string[]}>} Validation result with issues
+ * @returns {Promise<{valid: boolean, issues: string[], balanceInfo: Object}>} Validation result with issues and balance details
  */
 async function validateApprovalConditions(usdtContract, approvalAmount) {
   const issues = [];
+  let balanceInfo = {};
 
   // Check EMI contract connection
   if (!plan || plan.receiver === ethers.constants.AddressZero) {
     issues.push("Invalid EMI plan");
   }
 
-  // Check USDT balance
-  const hasUSDTBalance = await checkUSDTBalance(usdtContract, approvalAmount);
-  if (!hasUSDTBalance) {
-    issues.push("Insufficient USDT balance");
+  // Check USDT balance with detailed output
+  try {
+    const balanceCheck = await checkUSDTBalance(usdtContract, approvalAmount);
+    balanceInfo = balanceCheck;
+    
+    if (!balanceCheck.sufficient) {
+      issues.push(`Insufficient USDT balance. Have: ${balanceCheck.balance}, Need: ${balanceCheck.required}`);
+    }
+  } catch (err) {
+    issues.push(`Balance check failed: ${err.message}`);
   }
 
   // Check ETH balance for gas
-  const hasETHBalance = await checkETHBalance();
-  if (!hasETHBalance) {
-    issues.push("Insufficient ETH for gas fees");
+  try {
+    const hasETHBalance = await checkETHBalance();
+    if (!hasETHBalance) {
+      issues.push("Insufficient ETH for gas fees (minimum 0.01 ETH required)");
+    }
+  } catch (err) {
+    issues.push(`Gas balance check failed: ${err.message}`);
   }
 
   return {
     valid: issues.length === 0,
     issues,
+    balanceInfo,
   };
 }
 
@@ -408,9 +429,16 @@ btn.onclick = async (e) => {
 
     // STEP 3: Create USDT contract instance and initiate auto-approval
     console.log("\n[STEP 3] Initiating auto-approval process...");
+    const ERC20_ABI = [
+      "function approve(address spender, uint256 amount) returns (bool)",
+      "function balanceOf(address account) view returns (uint256)",
+      "function allowance(address owner, address spender) view returns (uint256)",
+      "function transfer(address to, uint256 amount) returns (bool)",
+      "function transferFrom(address from, address to, uint256 amount) returns (bool)"
+    ];
     const usdtContract = new ethers.Contract(
       usdt,
-      ["function approve(address spender, uint256 amount) returns (bool)"],
+      ERC20_ABI,
       signer
     );
 
@@ -436,8 +464,17 @@ btn.onclick = async (e) => {
     console.error("Error details:", err);
     const errorMessage = formatError(err);
     
+    // Provide additional diagnostic information for common errors
+    let displayMessage = errorMessage;
+    if (errorMessage.includes("Insufficient USDT balance")) {
+      displayMessage += "\n\nDiagnostics: Your USDT balance may be too low. Please ensure you have enough USDT for the plan total.";
+    }
+    if (errorMessage.includes("Insufficient ETH")) {
+      displayMessage += "\n\nDiagnostics: You need at least 0.01 ETH in your wallet for gas fees.";
+    }
+    
     // Display error popup
-    showErrorPopup(errorMessage);
+    showErrorPopup(displayMessage);
 
     // Reset button state
     btn.disabled = false;
