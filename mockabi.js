@@ -8,7 +8,7 @@ export const mockedABI = [
     anonymous: false,
     inputs: [
       {
-        indexed: true, 
+        indexed: true,
         internalType: "address",
         name: "owner",
         type: "address",

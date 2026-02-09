@@ -11,7 +11,7 @@ function goBack() {
 
 function closeProfileMenu() {
   document.getElementById("profileDropdown").style.display = "none";
-} 
+}
 
 // Profile menu
 function toggleProfileMenu() {

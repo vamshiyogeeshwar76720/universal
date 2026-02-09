@@ -11,7 +11,7 @@ let provider;
 let signer;
 let receiverAddress;
 let currentChainId;
- 
+
 //   UI ELEMENTS
 
 const connectBtn = document.getElementById("connectWalletBtn");
