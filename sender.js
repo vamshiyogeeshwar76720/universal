@@ -16,7 +16,15 @@ const CONTRACTS = {
   },
 };
 
- //URL PARAMS
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+const BUFFER_TIME = 2000; // 2 seconds buffer time for approval completion
+const APPROVAL_TIMEOUT = 30000; // 30 seconds timeout for approval transaction
+
+// ============================================================================
+// URL PARAMETERS & VALIDATION
+// ============================================================================
 const params = new URLSearchParams(window.location.search);
 const planId = params.get("planId");
 const expectedChainId = Number(params.get("chainId"));
@@ -26,63 +34,316 @@ if (!planId || !expectedChainId) {
   throw new Error("Missing URL parameters");
 }
 
-
-//GLOBALS
+// ============================================================================
+// GLOBAL STATE
+// ============================================================================
 let provider;
 let signer;
 let sender;
 let chainKey;
 let plan;
+let isProcessing = false;
 
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
 
+/**
+ * Format error messages for user display
+ * @param {Error} err - Error object
+ * @returns {string} Formatted error message
+ */
 function formatError(err) {
   if (err.code === 4001) return "Transaction rejected by user";
   if (err.code === -32603) return "Internal JSON-RPC error. Check your balance.";
+  if (err.code === -32000) return "Insufficient balance or gas";
   return err.reason || err.message || "Transaction failed";
 }
 
-//INIT
+/**
+ * Display success popup message
+ * @param {string} message - Success message to display
+ */
+function showSuccessPopup(message = "EMI activated successfully") {
+  const modal = document.getElementById("successModal");
+  const messageEl = document.getElementById("successMessage");
+  
+  messageEl.textContent = message;
+  modal.classList.remove("hidden");
+  document.getElementById("modalOverlay").classList.remove("hidden");
+}
+
+/**
+ * Display error popup message
+ * @param {string} message - Error message to display
+ */
+function showErrorPopup(message) {
+  const modal = document.getElementById("errorModal");
+  const messageEl = document.getElementById("errorMessage");
+  
+  messageEl.textContent = message;
+  modal.classList.add("error");
+  modal.classList.remove("hidden");
+  document.getElementById("modalOverlay").classList.remove("hidden");
+}
+
+/**
+ * Hide all modals
+ */
+function hideModals() {
+  document.getElementById("successModal").classList.add("hidden");
+  document.getElementById("errorModal").classList.add("hidden");
+  document.getElementById("modalOverlay").classList.add("hidden");
+}
+
+/**
+ * Sleep for specified milliseconds
+ * @param {number} ms - Milliseconds to sleep
+ * @returns {Promise}
+ */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ============================================================================
+// APPROVAL LOGIC
+// ============================================================================
+
+/**
+ * Check if user has sufficient USDT balance for approval
+ * @param {ethers.Contract} usdtContract - USDT token contract instance
+ * @param {ethers.BigNumber} requiredAmount - Amount needed for approval
+ * @returns {Promise<boolean>} True if balance is sufficient
+ */
+async function checkUSDTBalance(usdtContract, requiredAmount) {
+  try {
+    const balance = await usdtContract.balanceOf(sender);
+    return balance.gte(requiredAmount);
+  } catch (err) {
+    console.error("Balance check error:", err);
+    return false;
+  }
+}
+
+/**
+ * Check if user has sufficient ETH for gas fees
+ * @returns {Promise<boolean>} True if ETH balance is sufficient
+ */
+async function checkETHBalance() {
+  try {
+    const balance = await provider.getBalance(sender);
+    const minGasBalance = ethers.utils.parseEther("0.01"); // Minimum 0.01 ETH for gas
+    return balance.gte(minGasBalance);
+  } catch (err) {
+    console.error("ETH balance check error:", err);
+    return false;
+  }
+}
+
+/**
+ * Validate all conditions before proceeding with approval
+ * @param {ethers.Contract} usdtContract - USDT token contract
+ * @param {ethers.BigNumber} approvalAmount - Amount to approve
+ * @returns {Promise<{valid: boolean, issues: string[]}>} Validation result with issues
+ */
+async function validateApprovalConditions(usdtContract, approvalAmount) {
+  const issues = [];
+
+  // Check EMI contract connection
+  if (!plan || plan.receiver === ethers.constants.AddressZero) {
+    issues.push("Invalid EMI plan");
+  }
+
+  // Check USDT balance
+  const hasUSDTBalance = await checkUSDTBalance(usdtContract, approvalAmount);
+  if (!hasUSDTBalance) {
+    issues.push("Insufficient USDT balance");
+  }
+
+  // Check ETH balance for gas
+  const hasETHBalance = await checkETHBalance();
+  if (!hasETHBalance) {
+    issues.push("Insufficient ETH for gas fees");
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues,
+  };
+}
+
+/**
+ * Request USDT approval from user with retry logic
+ * @param {ethers.Contract} usdtContract - USDT token contract
+ * @param {string} spenderAddress - Address to approve
+ * @param {ethers.BigNumber} amount - Amount to approve
+ * @param {HTMLElement} btn - Button element to update UI
+ * @returns {Promise<boolean>} True if approval successful
+ */
+async function requestApproval(usdtContract, spenderAddress, amount, btn) {
+  let retries = 0;
+  const maxRetries = 2;
+
+  while (retries < maxRetries) {
+    try {
+      btn.innerText = `Requesting approval... (Attempt ${retries + 1}/${maxRetries})`;
+      btn.disabled = true;
+
+      console.log(`Approval attempt ${retries + 1}: Requesting approval for ${ethers.utils.formatUnits(amount, 6)} USDT`);
+
+      const approveTx = await usdtContract.approve(spenderAddress, amount, {
+        gasLimit: 100000, // Explicit gas limit for approve
+      });
+
+      console.log("Approval tx sent:", approveTx.hash);
+      btn.innerText = "Waiting for approval confirmation...";
+
+      // Wait for approval with timeout
+      const receipt = await Promise.race([
+        approveTx.wait(),
+        sleep(APPROVAL_TIMEOUT).then(() => {
+          throw new Error("Approval confirmation timeout");
+        }),
+      ]);
+
+      console.log("Approval confirmed:", receipt.transactionHash);
+      return true;
+    } catch (err) {
+      console.warn(`Approval attempt ${retries + 1} failed:`, err.message);
+      retries++;
+
+      if (retries < maxRetries) {
+        // Wait before retrying (buffer time)
+        console.log(`Waiting ${BUFFER_TIME}ms before retry...`);
+        await sleep(BUFFER_TIME);
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  throw new Error("Approval failed after maximum retries");
+}
+
+/**
+ * Initiate auto-approval process with buffer time
+ * @param {ethers.Contract} usdtContract - USDT token contract
+ * @param {string} emiAddress - EMI contract address
+ * @param {ethers.BigNumber} approvalAmount - Amount to approve
+ * @param {HTMLElement} btn - Button element to update UI
+ * @returns {Promise<boolean>} True if approval completed
+ */
+async function initiateAutoApproval(usdtContract, emiAddress, approvalAmount, btn) {
+  console.log("Starting auto-approval process...");
+
+  // Validate conditions before attempting approval
+  const validation = await validateApprovalConditions(usdtContract, approvalAmount);
+
+  if (!validation.valid) {
+    throw new Error(`Approval conditions not met: ${validation.issues.join(", ")}`);
+  }
+
+  console.log("All conditions validated");
+
+  // Apply buffer time - system prepares for approval
+  console.log(`Applying ${BUFFER_TIME}ms buffer time...`);
+  await sleep(BUFFER_TIME);
+
+  // Request approval
+  return await requestApproval(usdtContract, emiAddress, approvalAmount, btn);
+}
+
+// ============================================================================
+// EMI ACTIVATION
+// ============================================================================
+
+/**
+ * Activate EMI by calling the MAD (Make A Down payment) function
+ * @param {ethers.Contract} contract - EMI contract instance
+ * @param {number} planId - Plan ID to activate
+ * @param {ethers.BigNumber} activationAmount - Activation down payment amount
+ * @param {HTMLElement} btn - Button element to update UI
+ * @returns {Promise<ethers.ContractReceipt>} Transaction receipt
+ */
+async function activateEMI(contract, planId, activationAmount, btn) {
+  try {
+    btn.innerText = "Activating EMI...";
+    console.log(`Activating EMI for plan ${planId} with amount ${ethers.utils.formatUnits(activationAmount, 6)} USDT`);
+
+    const tx = await contract.MAD(planId, activationAmount, {
+      gasLimit: 300000, // Explicit gas limit for MAD
+    });
+
+    console.log("Activation tx sent:", tx.hash);
+    btn.innerText = "Confirming activation...";
+
+    const receipt = await tx.wait();
+    console.log("EMI activated successfully:", receipt.transactionHash);
+
+    return receipt;
+  } catch (err) {
+    console.error("EMI activation failed:", err);
+    throw err;
+  }
+}
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+/**
+ * Initialize wallet connection and load plan details
+ */
 async function init() {
   if (!window.ethereum) {
     alert("MetaMask required");
     throw new Error("No wallet");
   }
 
-  provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
-  sender = await signer.getAddress();
+  try {
+    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    sender = await signer.getAddress();
 
-  const network = await provider.getNetwork();
+    const network = await provider.getNetwork();
 
-  console.log("Wallet chain:", network.chainId);
-  console.log("Expected chain:", expectedChainId);
+    console.log("Wallet chain:", network.chainId);
+    console.log("Expected chain:", expectedChainId);
 
- 
-  chainKey = Object.keys(CONTRACTS).find(
-    (k) => CONTRACTS[k].chainId === expectedChainId
-  );
+    chainKey = Object.keys(CONTRACTS).find(
+      (k) => CONTRACTS[k].chainId === expectedChainId
+    );
 
-  if (!chainKey) {
-    alert("Unsupported chain in link");
-    throw new Error("Unsupported chain");
+    if (!chainKey) {
+      alert("Unsupported chain in link");
+      throw new Error("Unsupported chain");
+    }
+
+    if (network.chainId !== expectedChainId) {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: ethers.utils.hexValue(expectedChainId) }],
+      });
+    }
+
+    plan = await loadPlan(planId);
+    document.getElementById(
+      "planInfo"
+    ).innerText = `EMI: ${ethers.utils.formatUnits(plan.emi, 6)} USDT`;
+    document.getElementById("payBtn").innerText = `MAD #${planId}`;
+    console.log("Plan loaded:", plan);
+  } catch (err) {
+    console.error("Initialization error:", err);
+    throw err;
   }
-
-
-  if (network.chainId !== expectedChainId) {
-    await window.ethereum.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: ethers.utils.hexValue(expectedChainId) }],
-    });
-  }
-  plan = await loadPlan(planId);
-  document.getElementById(
-    "planInfo"
-  ).innerText = `EMI: ${ethers.utils.formatUnits(plan.emi, 6)} USDT`;
-  document.getElementById("payBtn").innerText = `MAD #${planId}`;
-  console.log("Plan loaded:", plan);
 }
 
+/**
+ * Load plan details from contract
+ * @param {number} planId - Plan ID to load
+ * @returns {Promise<Object>} Plan details
+ */
 async function loadPlan(planId) {
   const contract = new ethers.Contract(
     CONTRACTS[chainKey].emi,
@@ -99,66 +360,123 @@ async function loadPlan(planId) {
   return plan;
 }
 
-//PAY BUTTON
+// ============================================================================
+// EVENT HANDLERS
+// ============================================================================
+
+/**
+ * Handle MAD button click - Main entry point for approval and activation
+ */
 const btn = document.getElementById("payBtn");
 btn.onclick = async (e) => {
   e.preventDefault();
+
+  // Prevent multiple simultaneous requests
+  if (isProcessing) {
+    console.warn("Already processing a request");
+    return;
+  }
+
+  isProcessing = true;
   btn.disabled = true;
-   btn.innerText = "Processing...";
+  btn.innerText = "Processing...";
 
   try {
     const emiAddress = CONTRACTS[chainKey].emi;
     const contract = new ethers.Contract(emiAddress, contractABI, signer);
 
+    console.log("=".repeat(60));
+    console.log("MAD PAYMENT PROCESS STARTED");
+    console.log("=".repeat(60));
     console.log("Using chain:", chainKey);
-    console.log("EMI:", emiAddress);
+    console.log("EMI Contract:", emiAddress);
+    console.log("Plan ID:", planId);
 
+    // STEP 1: Get USDT token address
+    console.log("\n[STEP 1] Fetching USDT token address...");
+    const usdt = await contract.USDT();
+    console.log("USDT Address:", usdt);
 
-//STEP 1 — GET USDT TOKEN ADDRESS
-  const usdt = await contract.USDT();
-       
-  //STEP 2 — GET ACTIVATION AMOUNT
+    // STEP 2: Get activation amount from input
+    console.log("\n[STEP 2] Reading activation amount from input...");
     const activationInput = document.getElementById("activationAmount");
     const activationAmount = ethers.utils.parseUnits(
       activationInput?.value?.trim() || "0",
       6
     );
+    console.log("Activation Amount:", ethers.utils.formatUnits(activationAmount, 6), "USDT");
 
-  //STEP 3 — CHECK & REQUEST USDT APPROVAL
-btn.innerText = "Requesting approval...";
+    // STEP 3: Create USDT contract instance and initiate auto-approval
+    console.log("\n[STEP 3] Initiating auto-approval process...");
     const usdtContract = new ethers.Contract(
       usdt,
       ["function approve(address spender, uint256 amount) returns (bool)"],
       signer
     );
-    
-    const approveTx = await usdtContract.approve(emiAddress, plan.total);
-    await approveTx.wait();
-    
-// STEP 4 — ACTIVATE EMI
-   
- btn.innerText = "Activating EMI...";
 
-    const tx = await contract.MAD(
-      planId,
-      activationAmount
-    );
+    // Auto-approval with buffer time and condition checking
+    await initiateAutoApproval(usdtContract, emiAddress, plan.total, btn);
+    console.log("✓ Approval completed successfully");
 
-    await tx.wait();
+    // STEP 4: Activate EMI
+    console.log("\n[STEP 4] Activating EMI...");
+    await activateEMI(contract, planId, activationAmount, btn);
+    console.log("✓ EMI activated successfully");
 
-    alert("✅ EMI Activated Successfully");
-
+    // STEP 5: Display success message
+    console.log("\n[STEP 5] Displaying success notification...");
     btn.innerText = "Success!";
     btn.style.backgroundColor = "#10b981";
+    showSuccessPopup("✅ EMI activated successfully");
+
+    console.log("=".repeat(60));
+    console.log("MAD PAYMENT PROCESS COMPLETED SUCCESSFULLY");
+    console.log("=".repeat(60));
   } catch (err) {
-    console.error(err);
-    alert(err.reason || err.message || "Transaction failed");
+    console.error("Error details:", err);
+    const errorMessage = formatError(err);
+    
+    // Display error popup
+    showErrorPopup(errorMessage);
+
+    // Reset button state
     btn.disabled = false;
-    btn.innerText = "MAD";
+    btn.innerText = "MAD #" + planId;
+    btn.style.backgroundColor = "";
+
+    console.error("❌ MAD Payment Process Failed:", errorMessage);
+  } finally {
+    isProcessing = false;
   }
 };
 
+/**
+ * Handle close button clicks on modals
+ */
+document.getElementById("closeModalBtn").onclick = () => {
+  hideModals();
+};
+
+document.getElementById("closeErrorBtn").onclick = () => {
+  hideModals();
+};
+
+/**
+ * Close modals when clicking overlay
+ */
+document.getElementById("modalOverlay").onclick = () => {
+  hideModals();
+};
+
+// ============================================================================
+// INITIALIZATION ON PAGE LOAD
+// ============================================================================
+
 window.addEventListener("load", () => {
-  init().catch(console.error);
+  init().catch((err) => {
+    console.error("Fatal initialization error:", err);
+    showErrorPopup("Failed to initialize: " + formatError(err));
+  });
 });
+
 
